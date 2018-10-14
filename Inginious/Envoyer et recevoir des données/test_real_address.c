@@ -9,7 +9,7 @@
 #include <netinet/in.h>
 
 const char *real_address(const char *address, struct sockaddr_in6 *rval){
-  
+
     int err;
 
     struct addrinfo *hints = (struct addrinfo *) calloc(1, sizeof(struct addrinfo));
@@ -40,12 +40,7 @@ const char *real_address(const char *address, struct sockaddr_in6 *rval){
 // Teste la fonction real_address()
 int main(int argc, char* argv[]){
 
-  char* err = (char*) malloc(100*sizeof(char));
-  if(err == NULL){
-    fprintf(stderr, "ERROR : fonction malloc()\n");
-    return -1;
-  }
-
+  const char* err;
   char* address = argv[1];
 
   struct sockaddr_in6 *rval = (struct sockaddr_in6 *) malloc(sizeof(struct sockaddr_in6));
@@ -57,11 +52,11 @@ int main(int argc, char* argv[]){
   err = real_address(address, rval);
   if(err != NULL){
     fprintf(stderr, "%s\n", err);
-    free(err);
     free(rval);
     return -1;
   }
-  char* net_address = (rval->sin6_addr).s6_addr;
+
+  unsigned char* net_address = (rval->sin6_addr).s6_addr;
   char* printable_address = (char*) malloc(100*sizeof(char));
   if(printable_address == NULL){
     fprintf(stderr, "ERROR : fonction malloc()\n");
