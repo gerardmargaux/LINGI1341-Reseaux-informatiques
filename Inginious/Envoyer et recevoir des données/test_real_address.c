@@ -24,7 +24,7 @@ const char *real_address(const char *address, struct sockaddr_in6 *rval){
 		hints->ai_socktype = SOCK_DGRAM; // Car UDP packets
 		// hints.ai_socktype = SOCK_STREAM; si TCP packets
 
-    err = getaddrinfo(address, "http", hints, &results);
+    err = getaddrinfo(address, NULL, hints, &results);
     if(err != 0){
         return "Erreur d'exécution de la fonction addrinfo.";
     }
