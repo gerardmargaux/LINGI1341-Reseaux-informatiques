@@ -57,39 +57,43 @@ int create_socket(struct sockaddr_in6 *source_addr, int src_port, struct sockadd
 
 /*
  * Teste la fonction create_socket avec la machine courante
- */
+ *
 int main(int argc, char* argv[]){
 
   int err; // Variable pour error check
   int sfd;
 
-  struct addrinfo *hints = (struct addrinfo *) calloc(1, sizeof(struct addrinfo));
-  if(hints == NULL){
+  struct sockaddr_in6 *address = (struct sockaddr_in6 *) calloc(1, sizeof(struct sockaddr_in6));
+  if(address == NULL){
     fprintf(stderr, "ERROR : fonction calloc()\n");
     return -1;
   }
-  hints->ai_family = AF_INET6;
-  hints->ai_socktype = SOCK_DGRAM;
-  hints->ai_protocol = 0;
 
-  struct addrinfo *ai;
+  address->sin6_family = AF_INET6;
+  address->sin6_port = htons(9002);
+  (address->sin6_addr).s6_addr = INADDR_ANY;
 
-  err = getaddrinfo("::1", "9002", hints, &ai);
-  if(err != 0){
-    fprintf(stderr, "ERROR : fonction getaddrinfo()\n");
-    freeaddrinfo(hints);
-    return -1;
-  }
-  freeaddrinfo(hints);
-
-  struct sockaddr_in6 *sa = (struct sockaddr_in6 *) ai->ai_addr;
-
-  sfd = create_socket(sa, sa->sin6_port, sa, sa->sin6_port);
+  sfd = create_socket(address);
   if(sfd == -1){
     fprintf(stderr, "ERROR : fonction create_socket()\n");
+    return -1;
   }
 
   printf("SUCCESS !\n");
 
   return 0;
 }
+*/
+
+/*
+ * Teste la fonction create_socket sans arguments
+ */
+ int main(int argc, char const *argv[]) {
+   int sfd = create_socket(NULL, 0, NULL, 0);
+   if(sfd == -1){
+     fprintf(stderr, "ERROR : fonction create_socket()\n");
+     return -1;
+   }
+   printf("Socket file descriptor : %d\n", sfd);
+   return 0;
+ }
