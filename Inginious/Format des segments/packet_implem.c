@@ -18,9 +18,6 @@ struct __attribute__((__packed__)) pkt {
   uint32_t crc2; // Encode sur 32 bits (4 octets)
 };
 
-/* Alloue et initialise une struct pkt
- * @return: NULL en cas d'erreur
- */
 pkt_t* pkt_new()
 {
 	pkt_t * new = (pkt_t *) malloc(sizeof(pkt_t));
@@ -28,21 +25,22 @@ pkt_t* pkt_new()
     fprintf(stderr, "Erreur du malloc");
     return NULL;
   }
-  new->window = 1; // Par definition, on fait commencer la fenetre à 1
+  new->window = 0; // Par definition, on fait commencer la fenetre à 1
   new->tr = 0;
   new->type = 1;
-  new->seqnum = 0;
+  new->seqnum = (0;
   new->length = 0;
   new->timestamp = 0;
   new->crc1 = 0;
   new->crc2 = 0;
-  new->payload = (char *)malloc(512 * sizeof(char));
+	new->payload = (char *)malloc(512 * sizeof(char));
   if (new->payload == NULL){
     fprintf(stderr, "Erreur du malloc");
     return NULL;
   }
   return new;
 }
+
 
 /* Libere le pointeur vers la struct pkt, ainsi que toutes les
  * ressources associees*/
@@ -106,7 +104,7 @@ void pkt_del(pkt_t *pkt)
 
    // On decode le crc1
    uLong new_crc1 = crc32(0L, Z_NULL, 0);
-   new_crc1 = crc32(new_crc1,(Bytef*) data, 4);
+   new_crc1 = crc32(new_crc1,(Bytef*) data, 8);
    if (crc1 != new_crc1){ // Si le crc1 n'est pas verifie
      return E_CRC;
    }
@@ -162,48 +160,42 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
   uint8_t window = pkt_get_window(pkt);
   uint8_t type = pkt_get_type(pkt);
   uint8_t tr = pkt_get_tr(pkt);
-	uint16_t payload_len = htons(pkt_get_length(pkt)); // get length
+	uint16_t pay = htons(pkt_get_length(pkt)); // get length
   uint8_t seqnum = pkt_get_seqnum(pkt);
   // window + type + tr = 1 byte
   //uint8_t seqnum = pkt_get_seqnum(pkt);  1 byte
   uint16_t length = pkt_get_length(pkt); // 2 bytes
   // + 4 bytes timestamp + 4 bytes crc1 = 12 bytes
-  size_t longueur = pkt_get_length(pkt);
-  if (*len < longueur + 12){
- 	 return E_NOMEM;
-  }
+	size_t longueur = pkt_get_length(pkt);
+ 	if (*len < longueur + 12){
+		return E_NOMEM;
+ 	}
+
   // On encode le header
   uint8_t premier_byte = type<<6 | tr<<5; // premier byte = 0110 0000
   buf[0] = premier_byte | window; // Pour completer le byte
 
-	memcpy(buf+sizeof(uint8_t), &seqnum, sizeof(uint8_t)); // seqnum
-  memcpy(buf+sizeof(uint16_t), &payload_len, sizeof(uint16_t)); // length
-    size_t i;
-	/*
-  char * buffer = (char *) pkt;
+	memcpy(buf + sizeof(uint8_t), &seqnum, sizeof(uint8_t)); // seqnum
+  memcpy(buf + sizeof(uint16_t), &pay, sizeof(uint16_t)); // length
 
-
-  for(i = 1; i < 8 ; i++){
- 	 buf[i] = buffer[i];
-  }
-	*/
   // Gerer les CRC
   uLong crc1 = crc32(0L, Z_NULL, 0);
   crc1 = crc32(crc1,(const Bytef *) buf, 8);
 
   // On encode le crc1
+	size_t i;
   for(i = 0 ; i<length; i++){
  	 buf[8+i] = payload[i]; // Le crc1 commence apres 8 bytes
   }
   if(pkt_get_tr(pkt) == 0){ // Si le paquet n'est pas tronque --> crc2
- 	 uLong crc2 = crc32(0L, Z_NULL, 0);
- 	 crc2 = crc32(crc2,((const Bytef *)buf), length);
+		uLong crc2 = crc32(0L, Z_NULL, 0);
+ 	 	crc2 = crc32(crc2,((const Bytef *)buf), length);
  	 // On encode le crc2
- 	 (*(buf+length+12)) = crc2; // Le crc2 apres 12 bytes + la longueur du payload
+ 	 *(buf+length+12) = htonl(crc2); // Le crc2 apres 12 bytes + la longueur du payload
   }
 
   // On encode le payload
-  for(i = 0; i < 9; i++){
+  for(i = 0; i < 4; i++){ // Jusque 4 ou 9 ?
  	 buf[12+i] = payload[i]; // Le payload commence apres 12 bytes
   }
   return PKT_OK;
