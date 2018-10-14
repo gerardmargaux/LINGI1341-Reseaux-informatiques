@@ -18,112 +18,37 @@ int count_digits(int n){
 
 int create_socket(struct sockaddr_in6 *source_addr, int src_port, struct sockaddr_in6 *dest_addr, int dst_port){
 
-    int err;
-    struct protoent *protocol = IPPROTO_UDP;
-    int udp = protocol->p_proto;
-    int sd;
-    int digits;
+  int err; // Variable pour error check
 
-    if(source_addr != NULL){
-        sd = socket(PF_INET6, SOCK_DGRAM, udp);
-        if(sd < 0){
-            fprintf(stderr, "ERROR : fonction socket()\n");
-            return -1;
-        }
-        err = connect(sd, (struct sockaddr*) source_addr, sizeof((source_addr->sin6_addr).s6_addr));
-        if(err < 0){
-            fprintf(stderr, "ERROR : source_addr\n");
-            return -1;
-        }
+  // Création du socket
+  int socketfd = socket(PF_INET6, SOCK_DGRAM, 0);
+  if(socketfd < 0){
+    fprintf(stderr, "ERROR : fonction socket()\n");
+    return -1;
+  }
+
+  // Liaison à la source
+  if(source_addr != NULL && src_port > 0){
+    source_addr->sin6_port = htons(src_port); // Utilisation de htons pour convertir en Network byte order
+    err = bind(socketfd, (struct sockaddr*) source_addr, sizeof(source_addr));
+    // Error check
+    if(err != 0){
+      fprintf(stderr, "ERROR : fonction bind() source\n");
+      return -1;
     }
+  }
 
-    else if(src_port > 0){
-        struct addrinfo hints, *res;
-        memset(&hints, 0, sizeof(hints));
-        hints.ai_family = AF_INET6;
-        hints.ai_socktype = SOCK_DGRAM;
-        hints.ai_protocol = udp;
-        hints.ai_flags = AI_PASSIVE;
-
-        digits = count_digits(src_port);
-        char* string = (char*) malloc(sizeof(char)*digits);
-        if(string == NULL){
-            fprintf(stderr, "ERROR : fonction malloc()\n");
-            return -1;
-        }
-        sprintf(string, "%d", htons(src_port));
-
-        err = getaddrinfo(NULL, string, &hints, &res);
-        if(err != 0){
-            fprintf(stderr, "ERROR = fonction getaddrinfo()\n");
-            return -1;
-        }
-
-        sd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-        if(sd < 0){
-            fprintf(stderr, "ERROR : fonction socket()\n");
-            return -1;
-        }
-
-        err = bind(sd, res->ai_addr, res->ai_addrlen);
-        if(err != 0){
-            fprintf(stderr, "ERROR : fonction bind()\n");
-            return -1;
-        }
+  // Liaison à la destination
+  if(dest_addr != NULL && dst_port > 0){
+    dest_addr->sin6_port = htons(dst_port); // Utilisation de htons pour convertir en Network byte order
+    err = connect(socketfd, (struct sockaddr*) dest_addr, sizeof(dest_addr));
+    // Error check
+    if(err != 0){
+      fprintf(stderr, "ERROR : fonction connect() destination\n");
+      return -1;
     }
+  }
 
-    else if(dest_addr != NULL){
-        sd = socket(PF_INET6, SOCK_DGRAM, udp);
-        if(sd < 0){
-            fprintf(stderr, "ERROR : fonction socket()\n");
-            return -1;
-        }
-        err = connect(sd, (struct sockaddr*) dest_addr, sizeof((source_addr->sin6_addr).s6_addr));
-        if(err < 0){
-            fprintf(stderr, "ERROR : dest_addr\n");
-            return -1;
-        }
-    }
 
-    else if(dst_port > 0){
-        struct addrinfo hints, *res;
-        memset(&hints, 0, sizeof(hints));
-        hints.ai_family = AF_INET6;
-        hints.ai_socktype = SOCK_DGRAM;
-        hints.ai_protocol = udp;
-        hints.ai_flags = AI_PASSIVE;
-
-        digits = count_digits(dst_port);
-        char* string = (char*) malloc(sizeof(char)*digits);
-        if(string == NULL){
-            fprintf(stderr, "ERROR : fonction malloc()\n");
-            return -1;
-        }
-        sprintf(string, "%d", htons(dst_port));
-
-        err = getaddrinfo(NULL, string, &hints, &res);
-        if(err != 0){
-            fprintf(stderr, "ERROR = fonction getaddrinfo()\n");
-            return -1;
-        }
-
-        sd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-        if(sd < 0){
-            fprintf(stderr, "ERROR : fonction socket()\n");
-            return -1;
-        }
-
-        err = bind(sd, res->ai_addr, res->ai_addrlen);
-        if(err != 0){
-            fprintf(stderr, "ERROR : fonction bind()\n");
-            return -1;
-        }
-    }
-
-    else{
-        fprintf(stderr, "ERROR : format des arguments\n");
-        return -1;
-    }
-
-    return sd;
+  return socketfd;
 }
