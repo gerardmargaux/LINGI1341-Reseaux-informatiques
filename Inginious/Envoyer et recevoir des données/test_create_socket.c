@@ -73,7 +73,7 @@ int main(int argc, char* argv[]){
   if(err != 0){
     fprintf(stderr, "ERROR : fonction gethostname()\n");
     free(hostname);
-    return -1
+    return -1;
   }
 
   struct addrinfo *hints = (struct addrinfo *) calloc(1, sizeof(struct addrinfo));
