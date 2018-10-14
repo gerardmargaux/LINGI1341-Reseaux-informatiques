@@ -7,8 +7,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/select.h>
+#include <sys/time.h>
 #include <unistd.h>
-#include <poll.h>
 
 #define STD_IN 0
 #define STD_OUT 1
