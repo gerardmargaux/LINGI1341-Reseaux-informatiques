@@ -63,23 +63,9 @@ int main(int argc, char* argv[]){
   int err; // Variable pour error check
   int sfd;
 
-  char *hostname = (char*) malloc(128*sizeof(char));
-  if(hostname == NULL){
-    fprintf(stderr, "ERROR : fonction malloc()\n");
-    return -1;
-  }
-
-  err = gethostname(hostname, sizeof(hostname));
-  if(err != 0){
-    fprintf(stderr, "ERROR : fonction gethostname()\n");
-    free(hostname);
-    return -1;
-  }
-
   struct addrinfo *hints = (struct addrinfo *) calloc(1, sizeof(struct addrinfo));
   if(hints == NULL){
     fprintf(stderr, "ERROR : fonction calloc()\n");
-    free(hostname);
     return -1;
   }
   hints->ai_family = AF_INET6;
@@ -88,10 +74,9 @@ int main(int argc, char* argv[]){
 
   struct addrinfo *ai;
 
-  err = getaddrinfo(hostname, "9002", hints, &ai);
+  err = getaddrinfo("::1", "9002", hints, &ai);
   if(err != 0){
     fprintf(stderr, "ERROR : fonction getaddrinfo()\n");
-    free(hostname);
     freeaddrinfo(hints);
     return -1;
   }
@@ -102,10 +87,8 @@ int main(int argc, char* argv[]){
   sfd = create_socket(sa, sa->sin6_port, sa, sa->sin6_port);
   if(sfd == -1){
     fprintf(stderr, "ERROR : fonction create_socket()\n");
-    free(hostname);
   }
 
-  free(hostname);
   printf("SUCCESS !\n");
 
   return 0;
