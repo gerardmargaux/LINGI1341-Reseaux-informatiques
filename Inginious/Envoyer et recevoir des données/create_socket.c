@@ -7,15 +7,6 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-int count_digits(int n){
-    int digits = 0;
-    while(n >= 1){
-        digits++;
-        n = n/10;
-    }
-    return digits;
-}
-
 int create_socket(struct sockaddr_in6 *source_addr, int src_port, struct sockaddr_in6 *dest_addr, int dst_port){
 
   int err; // Variable pour error check
@@ -48,7 +39,6 @@ int create_socket(struct sockaddr_in6 *source_addr, int src_port, struct sockadd
       return -1;
     }
   }
-
 
   return socketfd;
 }
