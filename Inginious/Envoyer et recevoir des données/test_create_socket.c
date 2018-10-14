@@ -8,6 +8,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <errno.h>
 
 
 /* Creates a socket and initialize it
@@ -36,6 +37,7 @@ int create_socket(struct sockaddr_in6 *source_addr, int src_port, struct sockadd
     // Error check
     if(err != 0){
       fprintf(stderr, "ERROR : fonction bind() source\n");
+      perror("bind");
       return -1;
     }
   }
@@ -56,38 +58,8 @@ int create_socket(struct sockaddr_in6 *source_addr, int src_port, struct sockadd
 
 
 /*
- * Teste la fonction create_socket avec la machine courante
- *
-int main(int argc, char* argv[]){
-
-  int err; // Variable pour error check
-  int sfd;
-
-  struct sockaddr_in6 *address = (struct sockaddr_in6 *) calloc(1, sizeof(struct sockaddr_in6));
-  if(address == NULL){
-    fprintf(stderr, "ERROR : fonction calloc()\n");
-    return -1;
-  }
-
-  address->sin6_family = AF_INET6;
-  address->sin6_port = htons(9002);
-  (address->sin6_addr).s6_addr = INADDR_ANY;
-
-  sfd = create_socket(address);
-  if(sfd == -1){
-    fprintf(stderr, "ERROR : fonction create_socket()\n");
-    return -1;
-  }
-
-  printf("SUCCESS !\n");
-
-  return 0;
-}
-*/
-
-/*
  * Teste la fonction create_socket sans arguments
- */
+ *
  int main(int argc, char const *argv[]) {
    int sfd = create_socket(NULL, 0, NULL, 0);
    if(sfd == -1){
@@ -97,3 +69,28 @@ int main(int argc, char* argv[]){
    printf("Socket file descriptor : %d\n", sfd);
    return 0;
  }
+ */
+
+
+/*
+ * Teste la fonction create_socket avec la machine courante
+ */
+int main(int argc, char* argv[]){
+
+  int sfd;
+
+  struct sockaddr_in6 server_address;
+  memset(&server_address, 0, sizeof(server_address));
+  server_address.sin6_family = AF_INET6;
+  server_address.sin6_port = htons(13658);
+  server_address.sin6_addr = in6addr_any;
+
+  sfd = create_socket(&server_address, htons(13658), NULL, 0);
+  if(sfd == -1){
+    fprintf(stderr, "ERROR : fonction create_socket()\n");
+    return -1;
+  }
+
+  printf("SUCCESS !\n");
+  return 0;
+}
