@@ -24,16 +24,36 @@ int create_socket(struct sockaddr_in6 *source_addr, int src_port, struct sockadd
   int err; // Variable pour error check
 
   // Création du socket
-  int socketfd = socket(PF_INET6, SOCK_DGRAM, 0);
+  int socketfd = socket(AF_INET6, SOCK_DGRAM, 0);
   if(socketfd < 0){
     fprintf(stderr, "ERROR : fonction socket()\n");
+    perror("socket");
     return -1;
   }
 
   // Liaison à la source
   if(source_addr != NULL && src_port > 0){
+
+    struct addrinfo *hints = (struct addrinfo *) calloc(1, sizeof(struct addrinfo));
+    if(hints == NULL){
+      fprintf(stderr, "ERROR : fonction calloc()\n");
+      return -1;
+    }
+    hints->ai_family = AF_INET6;
+    hints->ai_socktype = SOCK_DGRAM;
+    hints->ai_protocol = 0;
+
+    struct addrinfo *res;
+
+    err = getaddrinfo("::1", NULL, hints, &res);
+    if(err != 0){
+      perror("getaddrinfo");
+      free(hints);
+      return -1;
+    }
+
     source_addr->sin6_port = htons(src_port); // Utilisation de htons pour convertir en Network byte order
-    err = bind(socketfd, (struct sockaddr*) source_addr, sizeof(source_addr));
+    err = bind(socketfd, (struct sockaddr*) source_addr, res->ai_addrlen);
     // Error check
     if(err != 0){
       fprintf(stderr, "ERROR : fonction bind() source\n");
@@ -43,12 +63,32 @@ int create_socket(struct sockaddr_in6 *source_addr, int src_port, struct sockadd
   }
 
   // Liaison à la destination
+
+  struct addrinfo *hints = (struct addrinfo *) calloc(1, sizeof(struct addrinfo));
+  if(hints == NULL){
+    fprintf(stderr, "ERROR : fonction calloc()\n");
+    return -1;
+  }
+  hints->ai_family = AF_INET6;
+  hints->ai_socktype = SOCK_DGRAM;
+  hints->ai_protocol = 0;
+
+  struct addrinfo *res;
+
+  err = getaddrinfo("::1", NULL, hints, &res);
+  if(err != 0){
+    perror("getaddrinfo");
+    free(hints);
+    return -1;
+  }
+
   if(dest_addr != NULL && dst_port > 0){
     dest_addr->sin6_port = htons(dst_port); // Utilisation de htons pour convertir en Network byte order
-    err = connect(socketfd, (struct sockaddr*) dest_addr, sizeof(dest_addr));
+    err = connect(socketfd, (struct sockaddr*) dest_addr, res->ai_addrlen);
     // Error check
     if(err != 0){
       fprintf(stderr, "ERROR : fonction connect() destination\n");
+      perror("connect");
       return -1;
     }
   }
@@ -77,15 +117,23 @@ int create_socket(struct sockaddr_in6 *source_addr, int src_port, struct sockadd
  */
 int main(int argc, char* argv[]){
 
+  int err;
   int sfd;
 
   struct sockaddr_in6 server_address;
   memset(&server_address, 0, sizeof(server_address));
   server_address.sin6_family = AF_INET6;
-  server_address.sin6_port = htons(13658);
-  server_address.sin6_addr = in6addr_any;
+  err = inet_pton(AF_INET6, "::1", server_address.sin6_addr.s6_addr);
+  if(err == -1){
+    perror("Erreur inet_pton");
+    return -1;
+  }
+  else if(err == 0){
+    fprintf(stderr, "Il ne s'agit pas d'une adresse IPv6 valide\n");
+    return -1;
+  }
 
-  sfd = create_socket(&server_address, htons(13658), NULL, 0);
+  sfd = create_socket(&server_address, 12345, &server_address, 12345);
   if(sfd == -1){
     fprintf(stderr, "ERROR : fonction create_socket()\n");
     return -1;
