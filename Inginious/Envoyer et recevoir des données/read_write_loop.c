@@ -13,6 +13,12 @@
 #define STD_IN 0
 #define STD_OUT 1
 
+
+/* Loop reading a socket and printing to stdout,
+ * while reading stdin and writing to the socket
+ * @sfd: The socket file descriptor. It is both bound and connected.
+ * @return: as soon as stdin signals EOF
+ */
 void read_write_loop(int sfd){
 
     int err;
