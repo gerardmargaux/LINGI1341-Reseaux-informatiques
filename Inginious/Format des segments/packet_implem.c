@@ -72,75 +72,76 @@ void pkt_del(pkt_t *pkt)
  * @return: Un code indiquant si l'operation a reussi ou representant
  *         l'erreur rencontree.
  */
-pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt)
-{
-  if (len == 0){ // Le paquet est incoherent
-		pkt_del(pkt);
-    return E_UNCONSISTENT;
-  }
-  else if (len < 4){ // Il n'y a pas de header car il est encode sur 4 bytes
-		pkt_del(pkt);
-    return E_NOHEADER;
-  }
-  else {
-	uint16_t length = pkt_get_length(pkt);
-  uint32_t crc1 = pkt_get_crc1(pkt);
-  uint32_t crc2 = pkt_get_crc2(pkt);
-  size_t indice_header = 4; // Indice ou on doit terminer de copier le header
-  size_t indice_crc1 = *(data + 8);// Indice du data ou on doit commencer à copier le crc1
-  size_t indice_timestamp = *(data + 4); // Indice du data ou on doit commencer à copier le timestamp
-  size_t indice_payload = *(data + 12);
-  size_t i;
+ pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt)
+ {
+   if (len == 0){ // Le paquet est incoherent
+ 		pkt_del(pkt);
+     return E_UNCONSISTENT;
+   }
+   else if (len < 4){ // Il n'y a pas de header car il est encode sur 4 bytes
+ 		pkt_del(pkt);
+     return E_NOHEADER;
+   }
+   else {
+ 	uint16_t length = pkt_get_length(pkt);
+   uint32_t crc1 = pkt_get_crc1(pkt);
+   uint32_t crc2 = pkt_get_crc2(pkt);
+ 	uint32_t timestamp;
+ 	char * payload;
+   //size_t indice_header = 4; // Indice ou on doit terminer de copier le header
+   size_t indice_crc1 = *(data + 8);// Indice du data ou on doit commencer à copier le crc1
+   size_t indice_timestamp = *(data + 4); // Indice du data ou on doit commencer à copier le timestamp
+  // size_t indice_payload = *(data + 12);
+   size_t i;
 
-  // On copie le header
-  for (i = 0; i < 4; i++){
-    memcpy((void *)data, pkt, len);
-  }
+   // On copie le header
+   for (i = 0; i < 4; i++){
+     memcpy((void *)data, pkt, len);
+   }
 
-  // On copie le timestamp
-  for (i = 4; i < 6; i++){
-    memcpy((void *)indice_timestamp, pkt, len);
-  }
+   // On copie le timestamp
+   for (i = 4; i < 6; i++){
+     memcpy(&timestamp, &indice_timestamp, len);
+   }
 
-  // On decode le crc1
-  uLong new_crc1 = crc32(0L, Z_NULL, 0);
-  new_crc1 = crc32(new_crc1,(Bytef*) data, 4);
-  if (crc1 != new_crc1){ // Si le crc1 n'est pas verifie
-    return E_CRC;
-  }
+   // On decode le crc1
+   uLong new_crc1 = crc32(0L, Z_NULL, 0);
+   new_crc1 = crc32(new_crc1,(Bytef*) data, 4);
+   if (crc1 != new_crc1){ // Si le crc1 n'est pas verifie
+     return E_CRC;
+   }
 
-  for (i = 6; i < 8; i++){
-    memcpy((void *) indice_crc1, &crc1, sizeof(crc1));
-  }
-  pkt_set_crc1(pkt, crc1);
+   for (i = 6; i < 8; i++){
+     memcpy(&crc1, &indice_crc1, sizeof(crc1));
+   }
+   pkt_set_crc1(pkt, crc1);
 
-  // On decode le payload
-  for (i = 12; i < 21; i++){
-    memcpy((void *)indice_payload, pkt->payload, length);
-  }
+   // On decode le payload
+   for (i = 12; i < 21; i++){
+     memcpy(&payload, pkt->payload, length);
+   }
 
-  // On decode le crc2
-  if (pkt_get_length(pkt) <= 0){ // Si le paquet ne contient pas de payload
-    if(pkt_get_tr(pkt) != 0){ // Si le paquet est tronque
-			pkt_del(pkt);
-      return E_TR;
-    }
-    return E_LENGTH;
-  }
-  const char * buffer = pkt_get_payload(pkt);
-  uLong new_crc2 = crc32(0L, Z_NULL, 0);
-  new_crc2 = crc32(new_crc2,(const Bytef *) buffer, pkt_get_length(pkt));
-  if (crc2 != new_crc2){ // Si le crc2 n'est pas verifie
-		pkt_del(pkt);
-    return E_CRC;
-  }
-  for (i = len-4; i < len; i++){
-    memcpy((*data + 12 + pkt_get_length), &crc2, sizeof(crc2));
-  }
-  pkt_set_crc2(pkt, crc2);
-}
-return PKT_OK;
-}
+   // On decode le crc2
+   if (pkt_get_length(pkt) <= 0){ // Si le paquet ne contient pas de payload
+     if(pkt_get_tr(pkt) != 0){ // Si le paquet est tronque
+ 			pkt_del(pkt);
+       return E_TR;
+     }
+     return E_LENGTH;
+   }
+   uLong new_crc2 = crc32(0L, Z_NULL, 0);
+   new_crc2 = crc32(new_crc2,(const Bytef *) data, pkt_get_length(pkt));
+   if (crc2 != new_crc2){ // Si le crc2 n'est pas verifie
+ 		pkt_del(pkt);
+     return E_CRC;
+   }
+   for (i = len-4; i < len; i++){
+     memcpy(&crc2, (*data + 12 + pkt_get_length), sizeof(crc2));
+   }
+   pkt_set_crc2(pkt, crc2);
+ }
+ return PKT_OK;
+ }
 
 /*
  * Encode une struct pkt dans un buffer, pret a etre envoye sur le reseau
@@ -155,50 +156,58 @@ return PKT_OK;
  *         le buffer est trop petit.
  */
 pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
-{
+ {
   // Gerer le header
   const char * payload = pkt_get_payload(pkt);
   uint8_t window = pkt_get_window(pkt);
   uint8_t type = pkt_get_type(pkt);
   uint8_t tr = pkt_get_tr(pkt);
+	uint16_t payload_len = htons(pkt_get_length(pkt)); // get length
+  uint8_t seqnum = pkt_get_seqnum(pkt);
   // window + type + tr = 1 byte
   //uint8_t seqnum = pkt_get_seqnum(pkt);  1 byte
   uint16_t length = pkt_get_length(pkt); // 2 bytes
   // + 4 bytes timestamp + 4 bytes crc1 = 12 bytes
   size_t longueur = pkt_get_length(pkt);
   if (*len < longueur + 12){
-    return E_NOMEM;
+ 	 return E_NOMEM;
   }
   // On encode le header
   uint8_t premier_byte = type<<6 | tr<<5; // premier byte = 0110 0000
   buf[0] = premier_byte | window; // Pour completer le byte
+
+	memcpy(buf+sizeof(uint8_t), &seqnum, sizeof(uint8_t)); // seqnum
+  memcpy(buf+sizeof(uint16_t), &payload_len, sizeof(uint16_t)); // length
+    size_t i;
+	/*
   char * buffer = (char *) pkt;
-  size_t i;
+
 
   for(i = 1; i < 8 ; i++){
-    buf[i] = buffer[i];
+ 	 buf[i] = buffer[i];
   }
+	*/
   // Gerer les CRC
   uLong crc1 = crc32(0L, Z_NULL, 0);
-	crc1 = crc32(crc1,(const Bytef *) buf, 8);
+  crc1 = crc32(crc1,(const Bytef *) buf, 8);
 
-	// On encode le crc1
-	for(i = 0 ; i<length; i++){
-		buf[8+i] = payload[i]; // Le crc1 commence apres 8 bytes
-	}
-	if(pkt_get_tr(pkt) == 0){ // Si le paquet n'est pas tronque --> crc2
-		uLong crc2 = crc32(0L, Z_NULL, 0);
-		crc2 = crc32(crc2,((const Bytef *)buf), length);
-		// On encode le crc2
-		(*(buf+length+12)) = crc2; // Le crc2 apres 12 bytes + la longueur du payload
-	}
+  // On encode le crc1
+  for(i = 0 ; i<length; i++){
+ 	 buf[8+i] = payload[i]; // Le crc1 commence apres 8 bytes
+  }
+  if(pkt_get_tr(pkt) == 0){ // Si le paquet n'est pas tronque --> crc2
+ 	 uLong crc2 = crc32(0L, Z_NULL, 0);
+ 	 crc2 = crc32(crc2,((const Bytef *)buf), length);
+ 	 // On encode le crc2
+ 	 (*(buf+length+12)) = crc2; // Le crc2 apres 12 bytes + la longueur du payload
+  }
 
   // On encode le payload
-	for(i = 0; i < 9; i++){
-		buf[12+i] = payload[i]; // Le payload commence apres 12 bytes
-	}
+  for(i = 0; i < 9; i++){
+ 	 buf[12+i] = payload[i]; // Le payload commence apres 12 bytes
+  }
   return PKT_OK;
-}
+ }
 
 ptypes_t pkt_get_type  (const pkt_t * pkt)
 {
