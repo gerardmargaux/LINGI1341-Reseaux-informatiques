@@ -20,7 +20,6 @@ struct __attribute__((__packed__)) pkt {
 
 /* Alloue et initialise une struct pkt
  * @return: NULL en cas d'erreur
- */
 pkt_t* pkt_new()
 {
 	pkt_t * new = (pkt_t *) malloc(sizeof(pkt_t));
@@ -43,6 +42,31 @@ pkt_t* pkt_new()
   }
   return new;
 }
+*/
+
+pkt_t* pkt_new()
+{
+	pkt_t * new = (pkt_t *) malloc(sizeof(pkt_t));
+  if (new == NULL){
+    fprintf(stderr, "Erreur du malloc");
+    return NULL;
+  }
+  new->window = 5; // Par definition, on fait commencer la fenetre à 1
+  new->tr = 0;
+  new->type = 1;
+  new->seqnum = (uint8_t) 450;
+  new->length = 250;
+  new->timestamp = 0;
+  new->crc1 = 4;
+  new->crc2 = 4;
+	new->payload = (char *)malloc(512 * sizeof(char));
+  if (new->payload == NULL){
+    fprintf(stderr, "Erreur du malloc");
+    return NULL;
+  }
+  return new;
+}
+
 
 /* Libere le pointeur vers la struct pkt, ainsi que toutes les
  * ressources associees*/
@@ -317,4 +341,22 @@ pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t len
   pkt->payload = realloc(pkt->payload, length);
   memcpy(pkt->payload, data, length);
   return PKT_OK;
+}
+
+int main(int argc, char *argv[]) {
+	// Test de la fonction encode
+	pkt_t * nouveau = pkt_new();
+	char * buffer = (char *)calloc(200*sizeof(char), 0);
+	if (buffer == NULL){
+		return -1;
+	}
+	size_t count = 0; // Nombre de places dispo dans le buffer
+	for(size_t i = 0; i<200; i++){
+		if (buffer[i] == 0){
+			count ++;
+		}
+	}
+	pkt_status_code return_code = pkt_encode(nouveau, buffer,(size_t *) count);
+	printf("Return code %u = \n", return_code);
+	return 0;
 }
