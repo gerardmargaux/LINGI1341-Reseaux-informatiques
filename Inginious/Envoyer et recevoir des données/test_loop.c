@@ -10,7 +10,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <errno.h>
-#include <sys/poll.h>
+#include <sys/time.h>
 
 #define STD_IN 0
 #define STD_OUT 1
@@ -20,69 +20,63 @@
  * while reading stdin and writing to the socket
  * @sfd: The socket file descriptor. It is both bound and connected.
  * @return: as soon as stdin signals EOF
- *
+ */
 void read_write_loop(int sfd){
 
-    int err;
-    int pret;
-    int length;
-    struct pollfd fds[2];
-    int timeout;
+  //int err; // Variable pour error check
+  int n_sent;
+  int n_rcvd;
 
-    // Initialisation des buffers
-    char* send_buf = (char*) malloc(1024*sizeof(char));
-    if(send_buf == NULL){
-      fprintf(stderr, "ERROR : fonction malloc()\n");
+  // Initialisation des variables pour select()
+  int sret;
+  int numfds = sfd + 1;
+  fd_set readfds;
+  struct timeval timeout;
+
+  // Initialisation des buffers
+  char send_buf[] = "Framinem7";
+  char * recv_buf = (char*) malloc(50*sizeof(char));
+  if(recv_buf == NULL){
+    fprintf(stderr, "ERROR malloc()\n");
+    return;
+  }
+
+
+
+    FD_ZERO(&readfds);
+    FD_SET(sfd, &readfds);
+
+    timeout.tv_sec = 10;
+    timeout.tv_usec = 0;
+
+    sret = select(numfds, &readfds, NULL, NULL, &timeout);
+    n_sent = send(sfd, send_buf, strlen(send_buf), 0);
+    fprintf(stderr, "Données envoyées sur le serveur : %s\n", send_buf);
+    if(n_sent == -1){
+      perror("ERROR send()");
       return;
     }
-    char* rcv_buf = (char*) malloc(1024*sizeof(char));
-    if(rcv_buf == NULL){
-      fprintf(stderr, "ERROR : fonction malloc()\n");
-      free(send_buf);
+    if(sret == -1){
+      perror("ERROR select()");
       return;
     }
-
-    while(1){
-        fds[0].fd = sfd;
-        fds[0].events = POLLIN;
-
-        fds[1].fd = sfd;
-        fds[1].events = POLLOUT;
-
-        timeout = 10000;
-
-        memset((void*) send_buf, 0, 1024);
-        memset((void*) rcv_buf, 0, 1024);
-
-        pret = poll(fds, 2, timeout);
-        if(fgets(send_buf, 1024, stdin) == NULL){
-            free(send_buf);
-            free(rcv_buf);
-            return;
-        }
-        length = strlen(send_buf);
-        send(sfd, send_buf, length, 0);
-        if(pret != 0){
-            if(fds[0].revents != 0){
-                recv(sfd, rcv_buf, 1024, 0);
-            }
-            if(fds[1].revents != 0){
-                err = write(STD_OUT, rcv_buf, length);
-                if(err < 0){
-                    free(send_buf);
-                    free(rcv_buf);
-                    return;
-                }
-            }
-        }
-
+    else if(sret == 0){
+      fprintf(stderr, "select() return value : %d\n", sret);
+      fprintf(stderr, "Timed out.\n");
+    }
+    else if(sret == 1){
+      fprintf(stderr, "select() return value : %d\n", sret);
+      n_rcvd = recv(sfd, recv_buf, sizeof(recv_buf), 0);
+      if(n_rcvd == -1){
+        perror("ERROR recv()");
+        free(recv_buf);
+      }
+      fprintf(stderr, "Données reçues du serveur : %s\n", recv_buf);
     }
 
-    free(send_buf);
-    free(rcv_buf);
+    free(recv_buf);
     return;
 }
- */
 
 
 // Teste la fonction read_write_loop
@@ -127,31 +121,8 @@ int main(int argc, char const *argv[]) {
 
   printf("Successful connection !\n");
 
-  // Envoi du message
-  char* message = "Incepserver";
-  int message_len = strlen(message);
-  err = send(sfd, message, message_len, 0);
-  if(err == -1){
-    perror("ERROR send()");
-    return -1;
-  }
+  read_write_loop(sfd);
 
-  // Réception du message
-  char* buffer = (char*) malloc(message_len*sizeof(char));
-  if(buffer == NULL){
-    fprintf(stderr, "ERROR malloc()\n");
-    return -1;
-  }
-  err = recv(sfd, buffer, message_len, 0);
-  if(err == -1){
-    perror("ERROR recv()");
-    free(buffer);
-    return -1;
-  }
-
-  // Affichage du message
-  printf("Message envoyé et reçu : %s\n", buffer);
-  free(buffer);
-
+  close(sfd);
   return 0;
 }

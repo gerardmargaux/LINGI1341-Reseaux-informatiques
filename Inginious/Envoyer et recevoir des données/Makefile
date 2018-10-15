@@ -23,19 +23,19 @@ debug: clean chat
 # We use an implicit rule to build an executable named 'chat'
 chat: chat.o read_write_loop.o create_socket.o real_address.o wait_for_client.o
 
-test_real_address: test_real_address.o
+test_real_address: clean test_real_address.o
 	@gcc -Wall -o test_real_address test_real_address.o
 
 test_real_address.o:
 	@gcc -Wall -o test_real_address.o -c test_real_address.c
 
-test_create_socket: test_create_socket.o
+test_create_socket: clean test_create_socket.o
 	@gcc -Wall -o test_create_socket test_create_socket.o
 
 test_create_socket.o:
 	@gcc -Wall -o test_create_socket.o -c test_create_socket.c
 
-test_loop: test_loop.o
+test_loop: clean test_loop.o
 	@gcc -Wall -o test_loop test_loop.o
 
 test_loop.o:
