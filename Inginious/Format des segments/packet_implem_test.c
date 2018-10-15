@@ -100,7 +100,7 @@ void pkt_del(pkt_t *pkt)
    }
    // On decode le crc1
    uLong new_crc1 = crc32(0L, Z_NULL, 0);
-   new_crc1 = crc32(new_crc1,(Bytef*) data, 8);
+   new_crc1 = crc32(new_crc1,(Bytef*) data, len);
 
    if (crc1 != new_crc1){ // Si le crc1 n'est pas verifie
      return E_CRC;
@@ -153,7 +153,6 @@ void pkt_del(pkt_t *pkt)
 pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
  {
   // Gerer le header
-	//int var = *len;
 	char * buffer = (char *)malloc(1024*sizeof(char));
 	strcpy(buffer, buf);
   const char * payload = pkt_get_payload(pkt);
