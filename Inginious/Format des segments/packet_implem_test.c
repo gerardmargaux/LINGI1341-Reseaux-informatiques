@@ -74,53 +74,50 @@ void pkt_del(pkt_t *pkt)
  {
    if (len == 0){ // Le paquet est incoherent
  		pkt_del(pkt);
-     return E_UNCONSISTENT;
+    return E_UNCONSISTENT;
    }
    else if (len < 4){ // Il n'y a pas de header car il est encode sur 4 bytes
  		pkt_del(pkt);
-     return E_NOHEADER;
+    return E_NOHEADER;
    }
    else {
-	uint16_t length = htons(pkt_get_length(pkt));
-   uint32_t crc1 = htonl(pkt_get_crc1(pkt));
-   uint32_t crc2 = htonl(pkt_get_crc2(pkt));
-  	uint32_t timestamp;
-  	char * payload;
-   //size_t indice_header = 4; // Indice ou on doit terminer de copier le header
-   size_t indice_crc1 = *(data + 8);// Indice du data ou on doit commencer à copier le crc1
-   size_t indice_timestamp = *(data + 4); // Indice du data ou on doit commencer à copier le timestamp
-  // size_t indice_payload = *(data + 12);
-   size_t i;
-
+		uint16_t length = htons(pkt_get_length(pkt));
+   	uint32_t crc1 = htonl(pkt_get_crc1(pkt));
+   	uint32_t crc2 = htonl(pkt_get_crc2(pkt));
+  	uint32_t timestamp = pkt_get_timestamp(pkt);
+  	char * payload = (char *)malloc(512*sizeof(char));
+   	//size_t indice_crc1 = *(data + 8);// Indice du data ou on doit commencer à copier le crc1
+   	//size_t indice_timestamp = *(data + 4); // Indice du data ou on doit commencer à copier le timestamp
+  	// size_t indice_payload = *(data + 12);
+   	size_t i;
    // On copie le header
    for (i = 0; i < 4; i++){
      memcpy((void *)data, pkt, len);
    }
-
    // On copie le timestamp
-   for (i = 4; i < 6; i++){
-     memcpy(&timestamp, &indice_timestamp, len);
+   for (i = 4; i < 8; i++){
+     memcpy(&pkt->timestamp, &timestamp, 4);
    }
-
    // On decode le crc1
    uLong new_crc1 = crc32(0L, Z_NULL, 0);
-   new_crc1 = crc32(new_crc1,(Bytef*) data, 8);
+   new_crc1 = crc32(new_crc1,(Bytef*) data, len);
+
    if (crc1 != new_crc1){ // Si le crc1 n'est pas verifie
      return E_CRC;
    }
 
-   for (i = 6; i < 8; i++){
-     memcpy(&crc1, &indice_crc1, sizeof(crc1));
+   for (i = 8; i < 12; i++){
+     memcpy(&pkt->crc1, &crc1, sizeof(crc1));
    }
    pkt_set_crc1(pkt, crc1);
 
    // On decode le payload
    for (i = 12; i < 21; i++){
-     memcpy(&payload, pkt->payload, length);
+     memcpy(&pkt->payload, &payload, length);
    }
 
    // On decode le crc2
-   if (htons(pkt_get_length(pkt)) <= 0){ // Si le paquet ne contient pas de payload
+   if (length <= 0){ // Si le paquet ne contient pas de payload
      if(pkt_get_tr(pkt) != 0){ // Si le paquet est tronque
  			pkt_del(pkt);
        return E_TR;
@@ -134,7 +131,7 @@ void pkt_del(pkt_t *pkt)
      return E_CRC;
    }
    for (i = len-4; i < len; i++){
-     memcpy(&crc2, (*data + 12 + pkt_get_length), sizeof(crc2));
+     memcpy(&pkt->crc2, &crc2, sizeof(crc2));
    }
    pkt_set_crc2(pkt, crc2);
  }
@@ -156,26 +153,31 @@ void pkt_del(pkt_t *pkt)
 pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
  {
   // Gerer le header
+	char * buffer = (char *)malloc(1024*sizeof(char));
+	strcpy(buffer, buf);
   const char * payload = pkt_get_payload(pkt);
   uint8_t window = pkt_get_window(pkt);
   uint8_t type = pkt_get_type(pkt);
   uint8_t tr = pkt_get_tr(pkt);
-	uint16_t pay_len = htons(pkt_get_length(pkt));
   uint8_t seqnum = pkt_get_seqnum(pkt);
+	//printf("J'affiche window %hhu\n", window);
+	//printf("J'affiche type %hhu\n", type);
+	//printf("J'affiche tr %hhu\n", tr);
   // window + type + tr = 1 byte
-  //uint8_t seqnum = pkt_get_seqnum(pkt);  1 byte
+  //seqnum =  1 byte
   uint16_t length = htons(pkt_get_length(pkt)); // 2 bytes
   // + 4 bytes timestamp + 4 bytes crc1 = 12 bytes
-	size_t longueur = pkt_get_length(pkt);
- 	if (*len < longueur + 12){
-	return E_NOMEM;
- }
+	if(strlen(buf) < 16){
+ 	 return E_NOMEM;
+  }
+  printf("Je suis avant premier_byte\n");
   // On encode le header
   uint8_t premier_byte = type<<6 | tr<<5; // premier byte = 0110 0000
-  buf[0] = premier_byte | window; // Pour completer le byte
+	printf("J'affiche le premier byte %hhu\n", premier_byte);
+  buffer[0] = premier_byte | window; // Pour completer le byte
 
-	memcpy(buf + sizeof(uint8_t), &seqnum, sizeof(uint8_t)); // seqnum
-  memcpy(buf + sizeof(uint16_t), &pay_len, sizeof(uint16_t)); // length
+	memcpy(buffer + sizeof(uint8_t), &seqnum, sizeof(uint8_t)); // seqnum
+  memcpy(buffer + sizeof(uint16_t), &length, sizeof(uint16_t)); // length
 
   // Gerer les CRC
   uLong crc1 = crc32(0L, Z_NULL, 0);
@@ -183,20 +185,25 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
 
   // On encode le crc1
 	size_t i;
-  for(i = 0 ; i<length; i++){
- 	 buf[8+i] = buf[i]; // Le crc1 commence apres 8 bytes
+  for(i = 0 ; i<4; i++){
+ 	 buffer[8+i] = buffer[i]; // Le crc1 commence apres 8 bytes
   }
+
   if(pkt_get_tr(pkt) == 0){ // Si le paquet n'est pas tronque --> crc2
 		uLong crc2 = crc32(0L, Z_NULL, 0);
- 	 	crc2 = crc32(crc2,((const Bytef *)buf), length);
+ 	 	crc2 = crc32(crc2,((const Bytef *)buffer), 8);
  	 // On encode le crc2
- 	 *(buf+length+12) = htonl(crc2); // Le crc2 apres 12 bytes + la longueur du payload
+	 printf("CRC2 ma gueule avant\n");
+	 for(i = 0 ; i<4; i++){
+  	 buffer[length+12] = buffer[i]; // Le crc2 apres 12 bytes + la longueur du payload
+   }
   }
 
   // On encode le payload
   for(i = 0; i < 4; i++){ // Jusque 4 ou 9 ?
- 	 buf[12+i] = buf[i]; // Le payload commence apres 12 bytes
+ 	 buffer[12+i] = buffer[i]; // Le payload commence apres 12 bytes
   }
+	printf("Je suis dans encode, buffer = %s\n",buf );
   return PKT_OK;
  }
 
@@ -323,21 +330,20 @@ int main(int argc, char *argv[]) {
 	// Test de la fonction encode
 	pkt_t * nouveau = pkt_new();
 	printf("Numero de sequence =  %hhu\n", nouveau->seqnum);
-	char buffer[7] = "s0al0ut";
-	const char data[7] = "vanture";
-	const size_t len = 10;
+	char buffer[16] = "s0al0utejfaudtge";
+	//printf("Nombre de caracteres dans data %lu\n", strlen(data));
+	//printf("Nombre de caracteres dans le buffer %lu\n", strlen(buffer));
+	const size_t len = 16;
 	printf("J'affiche le buffer %s\n", buffer);
-	size_t count = 0; // Nombre de places dispo dans le buffer
+	size_t * count = (size_t *)calloc(1, sizeof(size_t)); // Nombre de places dispo dans le buffer
 	for(int i = 0; i<strlen(buffer); i++){
-		if (buffer[i] == 0){
-			count = count + 1;
+		if (buffer[i] == '0'){
+			*count = *count + 1;
 		}
 	}
-	printf("Count = %zd\n", count);
-	pkt_status_code return_code_encode = pkt_encode(nouveau, buffer, &count);
-	printf("Return code = %u \n", return_code_encode);
-	// SEGMENTATION FAULT DANS LA FONCTION DECODE !!!!
-	pkt_status_code ret_code_decode = pkt_decode(data, len, nouveau);
-	printf("Return code = %u \n", ret_code_decode);
+	pkt_status_code return_code_encode = pkt_encode(nouveau, buffer, count);
+	printf("Return code encode = %u \n", return_code_encode);
+	pkt_status_code ret_code_decode = pkt_decode(buffer, len, nouveau);
+	printf("Return code decode = %u \n", ret_code_decode);
 	return 0;
 }
