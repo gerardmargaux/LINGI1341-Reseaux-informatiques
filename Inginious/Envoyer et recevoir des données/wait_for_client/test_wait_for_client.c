@@ -65,7 +65,7 @@ int main (int argc, char const *argv[]) {
 
   struct addrinfo *res;
 
-  err = getaddrinfo("::1", NULL, hints, &res);
+  err = getaddrinfo("::1", "12345", hints, &res);
   if(err != 0){
     perror("getaddrinfo");
     free(hints);
@@ -78,6 +78,7 @@ int main (int argc, char const *argv[]) {
     return -1;
   }
   bind(sfd, res->ai_addr, res->ai_addrlen);
+	printf("J'attends un message\n");
   int val = wait_for_client(sfd);
   return val;
 }

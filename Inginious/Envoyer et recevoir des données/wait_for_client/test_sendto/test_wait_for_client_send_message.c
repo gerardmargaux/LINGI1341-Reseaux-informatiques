@@ -21,7 +21,7 @@ int main (int argc, char const *argv[]) {
 
   struct addrinfo *res;
 
-  int err = getaddrinfo("::1", NULL, hints, &res);
+  int err = getaddrinfo("::1", "12345", hints, &res);
   if(err != 0){
     perror("getaddrinfo");
     free(hints);
@@ -33,14 +33,12 @@ int main (int argc, char const *argv[]) {
     fprintf(stderr, "ERROR : fonction socket()\n");
     return -1;
   }
-  ++const void * message = "Je t'envoie un message\n";
-  const struct msghdr msg[24] = "Je t'envoie un message\n";
-  //ssize_t rep = sendto(sfd, message, sizeof(message), 0, res->ai_addr, 0);
-  ssize_t rep = sendmsg(sfd, &msg, 0);
+  const void * message = "Je t'envoie un message\n";
+  size_t rep = sendto(sfd, message, sizeof(message), 0, res->ai_addr, res->ai_addrlen);
   if(rep < 0){
-    perror("sendto");
-    //fprintf(stderr, "Erreur lors de l'appel de la fonction sendto\n");
+    fprintf(stderr, "Erreur lors de l'appel de la fonction sendto\n");
     return -1;
   }
+  printf("Mon message est envoyé\n");
   return 0;
 }
