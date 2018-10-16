@@ -18,24 +18,31 @@
  * and could be repeated several times blocking only at the first call.
  */
 int wait_for_client(int sfd){
-	int err;
-  struct sockaddr_in6 address;
-	struct sockaddr * addr_cast = (struct sockaddr *)&address;
-  memset(&address, 0, sizeof(struct sockaddr_in6)); // On remplit avec des 0 la structure vers laquelle pointe address
-  char * buffer = (char *)malloc(1024*sizeof(char));
 
-	// Reception du message du client par le serveur
-  err = recvfrom(sfd, buffer, strlen(buffer), MSG_PEEK, addr_cast, (sizeof(struct sockaddr_in6)));
-  if (err < 0){
-    fprintf(stderr,"erreur de reception du message");
+	struct sockaddr_in6 * address = (struct sockaddr_in6 *)calloc(1024,sizeof(struct sockaddr_in6));
+	if(address == NULL){
+    fprintf(stderr, "ERROR : fonction calloc()\n");
     return -1;
   }
 
-	// Connexion entre le serveur et le client
-  err = connect(sfd, addr_cast, sizeof(struct sockaddr_in6));
-  if (err < 0){
-    fprintf(stderr,"erreur de connextion ");
+	char * buf = (char *)malloc(1024*sizeof(char));
+	if(buf == NULL){
+    fprintf(stderr, "ERROR : fonction malloc()\n");
+    return -1;
   }
 
-  return err;
+	socklen_t len = sizeof(*address);
+  int err;
+
+  err = recvfrom(sfd, buf, sizeof(buf), MSG_PEEK, (struct sockaddr *) address, &len);
+  if(err < 0){
+    fprintf(stderr, "Erreur de la fonction recvfrom\n");
+    return -1;
+  }
+
+  err = connect(sfd, (struct sockaddr *)address, len);
+  if(err < 0){
+    fprintf(stderr, "Erreur de connexion\n");
+  }
+  return 0;
 }

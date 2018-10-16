@@ -28,7 +28,7 @@ pkt_t* pkt_new()
   new->window = 5;
   new->tr = 0;
   new->type = 1;
-  new->seqnum = (uint8_t) 450;
+  new->seqnum = (uint8_t) 109;
   new->length = 25;
   new->timestamp = 0;
   new->crc1 = 4;
@@ -155,7 +155,7 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
   // Gerer le header
 	char * buffer = (char *)malloc(1024*sizeof(char));
 	strcpy(buffer, buf);
-  const char * payload = pkt_get_payload(pkt);
+  //const char * payload = pkt_get_payload(pkt);
   uint8_t window = pkt_get_window(pkt);
   uint8_t type = pkt_get_type(pkt);
   uint8_t tr = pkt_get_tr(pkt);

@@ -21,21 +21,25 @@ int main (int argc, char const *argv[]) {
 
   struct addrinfo *res;
 
-  err = getaddrinfo("::1", NULL, hints, &res);
+  int err = getaddrinfo("::1", NULL, hints, &res);
   if(err != 0){
     perror("getaddrinfo");
     free(hints);
     return -1;
   }
+
   int sfd = socket(AF_INET6, SOCK_DGRAM, 0);
   if (sfd < 0){
-    fprintf(stderr, "ERROR : sfd negatif\n", );
+    fprintf(stderr, "ERROR : fonction socket()\n");
     return -1;
   }
-  const void * message = "Je t'envoie un message\n";
-  int rep = sendto(int sfd, message, int len, 0, "::1", res->ai_addr);
+  ++const void * message = "Je t'envoie un message\n";
+  const struct msghdr msg[24] = "Je t'envoie un message\n";
+  //ssize_t rep = sendto(sfd, message, sizeof(message), 0, res->ai_addr, 0);
+  ssize_t rep = sendmsg(sfd, &msg, 0);
   if(rep < 0){
-    fprintf(stderr, "Erreur lors de l'appel de la fonction sendto\n", );
+    perror("sendto");
+    //fprintf(stderr, "Erreur lors de l'appel de la fonction sendto\n");
     return -1;
   }
   return 0;
