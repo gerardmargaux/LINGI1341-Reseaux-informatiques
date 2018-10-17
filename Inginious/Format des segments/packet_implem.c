@@ -88,7 +88,7 @@ void pkt_del(pkt_t *pkt)
    if (len == 0){ // Le paquet est incoherent
     return E_UNCONSISTENT;
    }
-   else if (len < 4){ // Il n'y a pas de header car il est encode sur 4 bytes
+   else if (len < 12){ // Il n'y a pas de header car il est encode sur 4 bytes
     return E_NOHEADER;
    }
 	 else {
@@ -179,7 +179,7 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
   uint16_t length = htons(pkt_get_length(pkt)); // 2 bytes
 	size_t size_len = pkt_get_length(pkt);
   // + 4 bytes timestamp + 4 bytes crc1 = 12 bytes
-//printf("Test 1\n");
+
 	if (type != PTYPE_DATA){
 		return E_TYPE;
 	};
@@ -193,37 +193,35 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
 	if (MAX_PAYLOAD_SIZE < size_len){
 		return E_LENGTH;
 	}
-//printf("Test 2\n");
+	
   // On encode le header
   uint8_t premier_byte = type<<6 | tr<<5; // premier byte = 0110 0000
-	//printf("J'affiche le premier byte %hhu\n", premier_byte);
   buf[0] = premier_byte | window; // Pour completer le byte
 
 	memcpy(buf + sizeof(uint8_t), &seqnum, sizeof(uint8_t)); // seqnum
   memcpy(buf + sizeof(uint16_t), &length, sizeof(uint16_t)); // length
 	memcpy(buf + sizeof(uint32_t), &timestamp, sizeof(uint32_t)); // timestamp
-//printf("Test 3\n");
+
   // Gerer les CRC
   uLong crc1 = crc32(0L, Z_NULL, 0);
   crc1 = htonl(crc32(crc1,(const Bytef *) buf, 8));
-//printf("Test 4\n");
+
   // On encode le crc1
 	memcpy(buf+8, &crc1, 4);
-//printf("Test 5\n");
+
 	// On encode le payload
 	if (length != 0 && size_len != 0){
 		memcpy(buf+12, pkt->payload, size_len);
 	}
-//printf("Test 6\n");
+
   if(tr == 0){ // Si le paquet n'est pas tronque --> crc2
 		uLong crc2 = crc32(0L, Z_NULL, 0);
  	 	crc2 = htonl(crc32(crc2,(const Bytef *)buf, 8));
-//printf("Test 7\n");
  	 // On encode le crc2
 	 memcpy(buf+size_len+12, &crc2, 4); // Le crc2 apres 12 bytes + la longueur du payload
  }
+
 	*len = 16 + size_len;
-	printf("Fin de la fonction encode\n");
   return PKT_OK;
  }
 
@@ -249,6 +247,9 @@ uint8_t  pkt_get_seqnum(const pkt_t * pkt)
 
 uint16_t pkt_get_length(const pkt_t * pkt)
 {
+	if (pkt == NULL){
+		return 0;
+	}
 	return pkt->length;
 }
 
@@ -337,6 +338,9 @@ pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t len
 	if (length > MAX_PAYLOAD_SIZE){
     return E_LENGTH;
   }
+	if(pkt->payload == NULL){
+			return E_NOMEM;
+	}
   pkt->payload = realloc(pkt->payload, length);
   memcpy(pkt->payload, data, length);
   return PKT_OK;

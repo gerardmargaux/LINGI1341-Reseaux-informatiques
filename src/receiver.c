@@ -69,6 +69,25 @@ int main(int argc, char *argv[]) {
   char* port = argv[optind+1];
   printf("Port : %s\n", port);
 
+  // Creation socket
+  int sfd = socket(AF_INET6, SOCK_DGRAM, 0);
+  if (sfd < 0){
+    fprintf(stderr, "Erreur de creation du socket\n");
+    return -1;
+  }
+
+  // Attente d'un message du sender
+  int ret_wait = wait_for_client(sfd);
+  if (ret_wait < 0){
+    fprintf(stderr, "Erreur lors de l'attente d'un message\n");
+    return -1;
+  }
+
+  // Reception d'un paquet du sender
+  // Envoie d'un ACK
+  
+  pkt_t * nouveau = pkt_new();
+  nouveau->type = 2;
 
 
   return 0;
