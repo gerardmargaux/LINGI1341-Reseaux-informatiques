@@ -44,7 +44,7 @@ pkt_t* pkt_new()
   new->timestamp = 0;
   new->crc1 = 0;
   new->crc2 = 0;
-	new->payload = (char *)malloc(512 * sizeof(char));
+	new->payload = (char *)malloc(MAX_PAYLOAD_SIZE * sizeof(char));
   if (new->payload == NULL){
     fprintf(stderr, "Erreur du malloc");
     return NULL;
@@ -327,7 +327,8 @@ pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t len
     return E_LENGTH;
   }
   pkt->payload = realloc(pkt->payload, length);
-  memcpy(pkt->payload, data, length);
+  memcpy(pkt->payload, data, length+1);
+	pkt->length = length;
   return PKT_OK;
 }
 
