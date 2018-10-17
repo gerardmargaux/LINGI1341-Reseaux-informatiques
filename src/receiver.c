@@ -52,8 +52,9 @@ int main(int argc, char *argv[]) {
 
   int err; // Variable pour error check
   int fd = STDOUT; // File descriptor avec lequel on va écrire les données
+  int bytes_received = 1; // Nombre de bytes reçus du sender
   int bytes_written; // Nombre de bytes écrits à chaque itération
-  pkt_status_code err_code; // Variable pour error check avec les paquets
+  //pkt_status_code err_code; // Variable pour error check avec les paquets
 
   // Prise en compte des arguments avec getopt()
   extern char* optarg;
@@ -71,7 +72,7 @@ int main(int argc, char *argv[]) {
   else if(c == 'f'){ // Ecriture dans un fichier
     char* filename = optarg;
     printf("Ecriture dans le fichier %s\n", filename);
-    fd = open(filename, O_WRONLY | O_CREAT);
+    fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
     if(fd == -1){
       perror("Erreur open fichier destination");
       return -1;
@@ -84,6 +85,9 @@ int main(int argc, char *argv[]) {
   printf("Port : %s\n", port);
 
   // Création du socket
+  struct sockaddr_in6 sender_addr, receiver_addr;
+  memset(&sender_addr, 0, sizeof(sender_addr));
+  memset(&receiver_addr, 0, sizeof(receiver_addr));
   int sockfd; // Variable qui va contenir le file descriptor du socket
   struct addrinfo hints, *servinfo;
   memset(&hints, 0, sizeof(hints));
@@ -106,13 +110,42 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-/*
-  // Creation socket
-  int sfd = socket(AF_INET6, SOCK_DGRAM, 0);
-  if (sfd < 0){
-    fprintf(stderr, "Erreur de creation du socket\n");
+  err = bind(sockfd, servinfo->ai_addr, servinfo->ai_addrlen);
+  if(err == -1){
+    perror("Erreur bind");
+    freeaddrinfo(servinfo);
+    close(sockfd);
+    close(fd);
     return -1;
   }
+
+  freeaddrinfo(servinfo);
+
+  while(bytes_received > 0){
+    int addr_len;
+    char buffer[MAX_PAYLOAD_SIZE];
+    bytes_received = recvfrom(sockfd, buffer, MAX_PAYLOAD_SIZE, 0,
+                              (struct sockaddr *) &sender_addr, (socklen_t *) &addr_len);
+    if(strcmp(buffer, "STOP") == 0){
+      printf("Fin de la réception de données\n");
+      break;
+    }
+    if(fd == STDOUT){
+      printf("Chaine reçue : %s\n", buffer);
+    }
+    else{
+      bytes_written = write(fd, buffer, strlen(buffer));
+      if(bytes_written < 0){
+        perror("Erreur write");
+        close(sockfd);
+        close(fd);
+        return -1;
+      }
+    }
+  }
+
+
+/*
 
   // Attente d'un message du sender
   int ret_wait = wait_for_client(sfd);
@@ -122,21 +155,15 @@ int main(int argc, char *argv[]) {
   }
 
   // Reception d'un paquet du sender
-<<<<<<< HEAD
   // Envoie d'un ACK
 
-=======
-  pkt_t * buffer = (pkt_t *)malloc(32*sizeof(pkt_t));
-  if (buffer == NULL){
-    fprintf(stderr, "ERROR : fonction malloc()\n");
-    return -1
-  }
-
-  // Envoi d'un ACK
->>>>>>> 8823b29cb691f7594a26040416a2c23e411977ad
   pkt_t * nouveau = pkt_new();
   nouveau->type = 2;
 */
 
+  close(sockfd);
+  if(fd != 1){
+    close(fd);
+  }
   return 0;
 }

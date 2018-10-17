@@ -52,10 +52,10 @@ int main(int argc, char *argv[]) {
 
   int err; // Variable pour error check
   int fd = STDIN; // File descriptor avec lequel on va lire les données
-  int bytes_read; // Nombre de bytes lus à chaque itération
-  pkt_status_code err_code; // Variable pour error check avec les paquets
+  int bytes_read; // Nombre de bytes lus sur l'entrée standard / le fichier source
+  int bytes_sent; // Nombre de bytes envoyés au receiver
+  //pkt_status_code err_code; // Variable pour error check avec les paquets
 
-  pkt_t* packet = pkt_new();
 
 
   // Prise en compte des arguments avec getopt()
@@ -110,38 +110,9 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  err = bind(sockfd, servinfo->ai_addr, servinfo->ai_addrlen);
-  if(err == -1){
-    perror("Erreur bind");
-    freeaddrinfo(servinfo);
-    close(sockfd);
-    close(fd);
-    return -1;
-  }
-
-  err = listen(sockfd, 1);
-  if(err = -1){
-    perror("Erreur listen");
-    freeaddrinfo(servinfo);
-    close(sockfd);
-    close(fd);
-    return -1;
-  }
-
-  struct sockaddr_storage client_addr;
-  socklen_t addr_size;
-  int client_fd = accept(sockfd, (struct sockaddr *) &client_addr, &addr_size);
-  if(client_fd == -1){
-    perror("Erreur accept");
-    freeaddrinfo(servinfo);
-    close(sockfd);
-    close(fd);
-    return -1;
-  }
-
-  printf("Connection successful !\n");
 
   freeaddrinfo(servinfo);
+
 
   while(1){
 
@@ -158,7 +129,9 @@ int main(int argc, char *argv[]) {
       return -1;
     }
     else if(bytes_read == 0){
-      printf("Lecture finie.\n");
+      bytes_sent = sendto(sockfd, "STOP", 5, 0,
+                          servinfo->ai_addr, servinfo->ai_addrlen);
+      printf("Fin de l'envoi de données.\n");
       free(payload_buf);
       break;
     }
@@ -166,22 +139,19 @@ int main(int argc, char *argv[]) {
       if(fd == STDIN){
         *(payload_buf+strlen(payload_buf)-1) = '\0';
       }
-      printf("Chaine lue : %s\n", payload_buf);
-      err_code = pkt_set_payload(packet, (const char*) payload_buf,
-      (const uint16_t) strlen(payload_buf));
-      if(err_code != PKT_OK){
-        fprintf(stderr, "Erreur set payload\n");
+      if(*payload_buf != '\0'){
+        printf("Chaine lue : %s\n", payload_buf);
+        bytes_sent = sendto(sockfd, payload_buf, strlen(payload_buf)+1, 0,
+                            servinfo->ai_addr, servinfo->ai_addrlen);
+        printf("Nombre de bytes envoyés : %d\n", bytes_sent);
+        printf("Chaine envoyée : %s\n", payload_buf);
         free(payload_buf);
-        pkt_del(packet);
-        return -1;
       }
-      printf("Données encodées dans le paquet : %s\n", pkt_get_payload(packet));
-      free(payload_buf);
     }
   }
 
+
   close(sockfd);
-  pkt_del(packet);
   if(fd != 0){
     close(fd);
   }
