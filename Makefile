@@ -18,7 +18,13 @@ lib: lib.o
 lib.o:
 	@gcc -Wall -o src/lib.o -c src/lib.c -lz
 
+test: clean lib test.o
+	@gcc -Wall -o $@ src/test.o src/lib.a -lz
+
+test.o:
+	@gcc -Wall -o src/test.o -c src/test.c -lz -I src
+
 .PHONY: clean tests
 
 clean:
-	@rm -f *.o sender receiver && clear && cd src && rm -f *.a *.o
+	@rm -f *.o sender receiver test && clear && cd src && rm -f *.a *.o

@@ -61,6 +61,180 @@ void pkt_del(pkt_t *pkt)
     free (pkt);
 }
 
+
+ptypes_t pkt_get_type  (const pkt_t * pkt)
+{
+	return pkt->type;
+}
+
+uint8_t  pkt_get_tr(const pkt_t * pkt)
+{
+	return pkt->tr;
+}
+
+uint8_t  pkt_get_window(const pkt_t * pkt)
+{
+	return pkt->window;
+}
+
+uint8_t  pkt_get_seqnum(const pkt_t * pkt)
+{
+	return pkt->seqnum;
+}
+
+uint16_t pkt_get_length(const pkt_t * pkt)
+{
+	return pkt->length;
+}
+
+uint32_t pkt_get_timestamp(const pkt_t * pkt)
+{
+	return pkt->timestamp;
+}
+
+uint32_t pkt_get_crc1(const pkt_t * pkt)
+{
+	return pkt->crc1;
+}
+
+uint32_t pkt_get_crc2(const pkt_t * pkt)
+{
+	return pkt->crc2;
+}
+
+const char* pkt_get_payload(const pkt_t * pkt)
+{
+	if ((pkt->length) <= 0){
+    return NULL;
+  }
+  return pkt->payload;
+}
+
+
+pkt_status_code pkt_set_type(pkt_t *pkt, const ptypes_t type)
+{
+	if(type == 1 || type == 2 || type == 3){
+    pkt->type = type;
+    return PKT_OK;
+  }
+  return E_TYPE;
+}
+
+pkt_status_code pkt_set_tr(pkt_t *pkt, const uint8_t tr)
+{
+	if (tr != 0 && tr != 1){
+    return E_TR;
+  }
+  pkt->tr = tr;
+  return PKT_OK;
+}
+
+pkt_status_code pkt_set_window(pkt_t *pkt, const uint8_t window)
+{
+	if (window > MAX_WINDOW_SIZE){
+    return E_WINDOW;
+  }
+  pkt->window = window;
+  return PKT_OK;
+}
+
+pkt_status_code pkt_set_seqnum(pkt_t *pkt, const uint8_t seqnum)
+{
+	if(seqnum > 255 || seqnum < 0){
+		return E_SEQNUM;
+	}
+	pkt->seqnum = seqnum;
+  return PKT_OK;
+}
+
+pkt_status_code pkt_set_length(pkt_t *pkt, const uint16_t length)
+{
+	if (length > MAX_PAYLOAD_SIZE){
+    return E_LENGTH;
+  }
+  pkt->length = length;
+  return PKT_OK;
+}
+
+pkt_status_code pkt_set_timestamp(pkt_t *pkt, const uint32_t timestamp)
+{
+	pkt->timestamp = timestamp;
+  return PKT_OK;
+}
+
+pkt_status_code pkt_set_crc1(pkt_t *pkt, const uint32_t crc1)
+{
+	pkt->crc1 = crc1;
+  return PKT_OK;
+}
+
+pkt_status_code pkt_set_crc2(pkt_t *pkt, const uint32_t crc2)
+{
+	pkt->crc2 = crc2;
+  return PKT_OK;
+}
+
+pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t length)
+{
+	if (length > MAX_PAYLOAD_SIZE){
+    return E_LENGTH;
+  }
+  pkt->payload = realloc(pkt->payload, length);
+  memcpy(pkt->payload, data, length+1);
+	pkt->length = length;
+  return PKT_OK;
+}
+
+/*
+ * Crée un paquet et initialise tous ses champs avec les arguments de la fonction
+ */
+pkt_t* pkt_init(ptypes_t type, uint8_t tr, uint8_t window, uint8_t seqnum,
+								uint16_t length, uint32_t timestamp, uint32_t crc1, uint32_t crc2,
+								const char* payload)
+{
+	pkt_status_code err_code;
+	pkt_t *packet = pkt_new();
+
+	err_code = pkt_set_payload(packet, payload, strlen(payload));
+	if(err_code != PKT_OK){
+		return NULL;
+	}
+
+	err_code = pkt_set_type(packet, type);
+	if(err_code != PKT_OK){
+		pkt_del(packet);
+		return NULL;
+	}
+	err_code = pkt_set_tr(packet, tr);
+	if(err_code != PKT_OK){
+		pkt_del(packet);
+		return NULL;
+	}
+	err_code = pkt_set_window(packet, window);
+	if(err_code != PKT_OK){
+		pkt_del(packet);
+		return NULL;
+	}
+	err_code = pkt_set_seqnum(packet, seqnum);
+	if(err_code != PKT_OK){
+		pkt_del(packet);
+		return NULL;
+	}
+	err_code = pkt_set_length(packet, length);
+	if(err_code != PKT_OK){
+		pkt_del(packet);
+		return NULL;
+	}
+	err_code = pkt_set_timestamp(packet, timestamp);
+
+	err_code = pkt_set_crc1(packet, crc1);
+
+	err_code = pkt_set_crc2(packet, crc2);
+
+	return packet;
+}
+
+
 /*
  * Decode des donnees recues et cree une nouvelle structure pkt.
  * Le paquet recu est en network byte-order.
@@ -164,27 +338,29 @@ void pkt_del(pkt_t *pkt)
 pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
  {
   // Gerer le header
-	char * buffer = (char *)malloc(1024*sizeof(char));
-	strcpy(buffer, buf);
   //const char * payload = pkt_get_payload(pkt);
-  uint8_t window = pkt_get_window(pkt);
-  uint8_t type = pkt_get_type(pkt);
-  uint8_t tr = pkt_get_tr(pkt);
-  uint8_t seqnum = pkt_get_seqnum(pkt);
-  //uint8_t seqnum = pkt_get_seqnum(pkt);  1 byte
+  uint8_t window = htons(pkt_get_window(pkt));
+  uint8_t type = htons(pkt_get_type(pkt));
+  uint8_t tr = htons(pkt_get_tr(pkt));
+  uint8_t seqnum = htons(pkt_get_seqnum(pkt));
   uint16_t length = htons(pkt_get_length(pkt)); // 2 bytes
+
   // + 4 bytes timestamp + 4 bytes crc1 = 12 bytes
 
 	// Teste si le buffer est trop petit
-	if(*len < 16){
+	if(*len < 12){
 		return E_NOMEM;
 	}
   // On encode le header
-  uint8_t premier_byte = type<<6 | tr<<5; // premier byte = 0110 0000
-  buffer[0] = premier_byte | window; // Pour completer le byte
 
-	memcpy(buffer + sizeof(uint8_t), &seqnum, sizeof(uint8_t)); // seqnum
-  memcpy(buffer + sizeof(uint16_t), &length, sizeof(uint16_t)); // length
+	// Type
+  uint8_t type_format = type<<6 & 0b00000011000000;
+	uint8_t tr_format = tr<<5 & 0b00000100000;
+	uint8_t window_format = window & 0b00011111;
+  *(buf) = type_format | tr_format | window_format; // Pour completer le byte
+
+	memcpy(buf + sizeof(uint8_t), &seqnum, sizeof(uint8_t)); // seqnum
+  memcpy(buf + sizeof(uint16_t), &length, sizeof(uint16_t)); // length
 
   // Gerer les CRC
   uLong crc1 = crc32(0L, Z_NULL, 0);
@@ -193,144 +369,25 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
   // On encode le crc1
 	size_t i;
   for(i = 0 ; i<4; i++){
- 	 buffer[8+i] = buffer[i]; // Le crc1 commence apres 8 bytes
+ 	 buf[8+i] = buf[i]; // Le crc1 commence apres 8 bytes
   }
 
   if(pkt_get_tr(pkt) == 0){ // Si le paquet n'est pas tronque --> crc2
 		uLong crc2 = crc32(0L, Z_NULL, 0);
- 	 	crc2 = crc32(crc2,((const Bytef *)buffer), 8);
+ 	 	crc2 = crc32(crc2,((const Bytef *)buf), 8);
  	 // On encode le crc2
 	 for(i = 0 ; i<4; i++){
-  	 buffer[length+12] = buffer[i]; // Le crc2 apres 12 bytes + la longueur du payload
+  	 buf[length+12] = buf[i]; // Le crc2 apres 12 bytes + la longueur du payload
    }
   }
 
   // On encode le payload
   for(i = 0; i < 4; i++){ // Jusque 4 ou 9 ?
- 	 buffer[12+i] = buffer[i]; // Le payload commence apres 12 bytes
+ 	 buf[12+i] = buf[i]; // Le payload commence apres 12 bytes
   }
   return PKT_OK;
  }
 
-ptypes_t pkt_get_type  (const pkt_t * pkt)
-{
-	return pkt->type;
-}
-
-uint8_t  pkt_get_tr(const pkt_t * pkt)
-{
-	return pkt->tr;
-}
-
-uint8_t  pkt_get_window(const pkt_t * pkt)
-{
-	return pkt->window;
-}
-
-uint8_t  pkt_get_seqnum(const pkt_t * pkt)
-{
-	return pkt->seqnum;
-}
-
-uint16_t pkt_get_length(const pkt_t * pkt)
-{
-	return pkt->length;
-}
-
-uint32_t pkt_get_timestamp   (const pkt_t * pkt)
-{
-	return pkt->timestamp;
-}
-
-uint32_t pkt_get_crc1   (const pkt_t * pkt)
-{
-	return pkt->crc1;
-}
-
-uint32_t pkt_get_crc2   (const pkt_t * pkt)
-{
-	return pkt->crc2;
-}
-
-const char* pkt_get_payload(const pkt_t * pkt)
-{
-	if ((pkt->length) <= 0){
-    return NULL;
-  }
-  return pkt->payload;
-}
-
-
-pkt_status_code pkt_set_type(pkt_t *pkt, const ptypes_t type)
-{
-	if(type == 1 || type == 2 || type == 3){
-    pkt->type = type;
-    return PKT_OK;
-  }
-  return E_TYPE;
-}
-
-pkt_status_code pkt_set_tr(pkt_t *pkt, const uint8_t tr)
-{
-	if (tr != 0 && tr != 1){
-    return E_TR;
-  }
-  pkt->tr = tr;
-  return PKT_OK;
-}
-
-pkt_status_code pkt_set_window(pkt_t *pkt, const uint8_t window)
-{
-	if (window > MAX_WINDOW_SIZE){
-    return E_WINDOW;
-  }
-  pkt->window = window;
-  return PKT_OK;
-}
-
-pkt_status_code pkt_set_seqnum(pkt_t *pkt, const uint8_t seqnum)
-{
-	pkt->seqnum = seqnum;
-  return PKT_OK;
-}
-
-pkt_status_code pkt_set_length(pkt_t *pkt, const uint16_t length)
-{
-	if (length > MAX_PAYLOAD_SIZE){
-    return E_LENGTH;
-  }
-  pkt->length = length;
-  return PKT_OK;
-}
-
-pkt_status_code pkt_set_timestamp(pkt_t *pkt, const uint32_t timestamp)
-{
-	pkt->timestamp = timestamp;
-  return PKT_OK;
-}
-
-pkt_status_code pkt_set_crc1(pkt_t *pkt, const uint32_t crc1)
-{
-	pkt->crc1 = crc1;
-  return PKT_OK;
-}
-
-pkt_status_code pkt_set_crc2(pkt_t *pkt, const uint32_t crc2)
-{
-	pkt->crc2 = crc2;
-  return PKT_OK;
-}
-
-pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t length)
-{
-	if (length > MAX_PAYLOAD_SIZE){
-    return E_LENGTH;
-  }
-  pkt->payload = realloc(pkt->payload, length);
-  memcpy(pkt->payload, data, length+1);
-	pkt->length = length;
-  return PKT_OK;
-}
 
 /* Resolve the resource name to an usable IPv6 address
  * @address: The name to resolve
@@ -554,4 +611,27 @@ int wait_for_client(int sfd){
     fprintf(stderr, "Erreur de connexion\n");
   }
   return 0;
+}
+
+
+/*
+ * Incrémente le numéro de séquence de 1.
+ * Si le numéro de séquence était 255, le remet à 0.
+ *
+ * @return : 0 si le numéro de séquence a été incrémenté
+ *           1 si le numéro de séquence a été remis à 0
+ *           -1 si le numéro de séquence n'était pas valide
+ */
+int seqnum_inc(int* seqnum){
+	if(*seqnum >= 0 && *seqnum <= 254){
+		*seqnum = *seqnum + 1;
+		return 0;
+	}
+	else if(*seqnum == 255){
+		*seqnum = 0;
+		return 1;
+	}
+	else{
+		return -1;
+	}
 }

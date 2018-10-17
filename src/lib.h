@@ -57,56 +57,63 @@ pkt_t* pkt_new();
 /* Libere le pointeur vers la struct pkt, ainsi que toutes les
  * ressources associees
  */
-void pkt_del(pkt_t*);
+void pkt_del(pkt_t* pkt);
 
 /* Accesseurs pour les champs toujours presents du paquet.
  * Les valeurs renvoyees sont toutes dans l'endianness native
  * de la machine!
  */
-ptypes_t pkt_get_type     (const pkt_t*);
-uint8_t  pkt_get_tr       (const pkt_t*);
-uint8_t  pkt_get_window   (const pkt_t*);
-uint8_t  pkt_get_seqnum   (const pkt_t*);
-uint16_t pkt_get_length   (const pkt_t*);
-uint32_t pkt_get_timestamp(const pkt_t*);
-uint32_t pkt_get_crc1     (const pkt_t*);
+ptypes_t pkt_get_type     (const pkt_t* pkt);
+uint8_t  pkt_get_tr       (const pkt_t* pkt);
+uint8_t  pkt_get_window   (const pkt_t* pkt);
+uint8_t  pkt_get_seqnum   (const pkt_t* pkt);
+uint16_t pkt_get_length   (const pkt_t* pkt);
+uint32_t pkt_get_timestamp(const pkt_t* pkt);
+uint32_t pkt_get_crc1     (const pkt_t* pkt);
 
 /* Renvoie un pointeur vers le payload du paquet, ou NULL s'il n'y
  * en a pas.
  */
-const char* pkt_get_payload(const pkt_t*);
+const char* pkt_get_payload(const pkt_t* pkt);
 
 
 /* Renvoie le CRC2 dans l'endianness native de la machine. Si
  * ce field n'est pas present, retourne 0.
  */
-uint32_t pkt_get_crc2(const pkt_t*);
+uint32_t pkt_get_crc2(const pkt_t* pkt);
 
 /* Setters pour les champs obligatoires du paquet. Si les valeurs
  * fournies ne sont pas dans les limites acceptables, les fonctions
  * doivent renvoyer un code d'erreur adapte.
  * Les valeurs fournies sont dans l'endianness native de la machine!
  */
-pkt_status_code pkt_set_type     (pkt_t*, const ptypes_t type);
-pkt_status_code pkt_set_tr       (pkt_t*, const uint8_t tr);
-pkt_status_code pkt_set_window   (pkt_t*, const uint8_t window);
-pkt_status_code pkt_set_seqnum   (pkt_t*, const uint8_t seqnum);
-pkt_status_code pkt_set_length   (pkt_t*, const uint16_t length);
-pkt_status_code pkt_set_timestamp(pkt_t*, const uint32_t timestamp);
-pkt_status_code pkt_set_crc1     (pkt_t*, const uint32_t crc1);
+pkt_status_code pkt_set_type     (pkt_t* pkt, const ptypes_t type);
+pkt_status_code pkt_set_tr       (pkt_t* pkt, const uint8_t tr);
+pkt_status_code pkt_set_window   (pkt_t* pkt, const uint8_t window);
+pkt_status_code pkt_set_seqnum   (pkt_t* pkt, const uint8_t seqnum);
+pkt_status_code pkt_set_length   (pkt_t* pkt, const uint16_t length);
+pkt_status_code pkt_set_timestamp(pkt_t* pkt, const uint32_t timestamp);
+pkt_status_code pkt_set_crc1     (pkt_t* pkt, const uint32_t crc1);
 
 /* Defini la valeur du champs payload du paquet.
  * @data: Une succession d'octets representants le payload
  * @length: Le nombre d'octets composant le payload
  * @POST: pkt_get_length(pkt) == length */
-pkt_status_code pkt_set_payload(pkt_t*,
+pkt_status_code pkt_set_payload(pkt_t* pkt,
                                 const char *data,
                                 const uint16_t length);
 
 /* Setter pour CRC2. Les valeurs fournies sont dans l'endianness
  * native de la machine!
  */
-pkt_status_code pkt_set_crc2(pkt_t*, const uint32_t crc2);
+pkt_status_code pkt_set_crc2(pkt_t* pkt, const uint32_t crc2);
+
+/*
+ * Crée un paquet et initialise tous ses champs avec les arguments de la fonction
+ */
+pkt_t* pkt_init(ptypes_t type, uint8_t tr, uint8_t window, uint8_t seqnum,
+								uint16_t length, uint32_t timestamp, uint32_t crc1, uint32_t crc2,
+								const char* payload);
 
 /*
  * Encode une struct pkt dans un buffer, pret a etre envoye sur le reseau
@@ -183,6 +190,16 @@ void read_write_loop(const int sfd);
  */
 int wait_for_client(int sfd);
 
+
+/*
+ * Incrémente le numéro de séquence de 1.
+ * Si le numéro de séquence était 255, le remet à 0.
+ *
+ * @return : 0 si le numéro de séquence a été incrémenté
+ *           1 si le numéro de séquence a été remis à 0
+ *           -1 si le numéro de séquence n'était pas valide
+ */
+int seqnum_inc(int* seqnum);
 
 
 #endif

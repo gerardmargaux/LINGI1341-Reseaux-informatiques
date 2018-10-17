@@ -54,7 +54,10 @@ int main(int argc, char *argv[]) {
   int fd = STDIN; // File descriptor avec lequel on va lire les données
   int bytes_read; // Nombre de bytes lus sur l'entrée standard / le fichier source
   int bytes_sent; // Nombre de bytes envoyés au receiver
-  //pkt_status_code err_code; // Variable pour error check avec les paquets
+  pkt_status_code err_code; // Variable pour error check avec les paquets
+
+  int window = 0;
+  int seqnum = htons(0b00000000);
 
 
 
@@ -141,11 +144,41 @@ int main(int argc, char *argv[]) {
       }
       if(*payload_buf != '\0'){
         printf("Chaine lue : %s\n", payload_buf);
+
+        pkt_t* packet = pkt_new();
+        err_code = pkt_set_payload(packet, payload_buf, strlen(payload_buf));
+        if(err_code != PKT_OK){
+          pkt_del(packet);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+        err_code = pkt_set_seqnum(packet, seqnum);
+        if(err_code != PKT_OK){
+          pkt_del(packet);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+        err = seqnum_inc(&seqnum);
+        if(err == -1){
+          pkt_del(packet);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+
+        printf("Numéro de séquence du paquet : %d\n", pkt_get_seqnum(packet));
+        printf("Données encodées dans le paquet : %s\n", pkt_get_payload(packet));
+
+        /*
         bytes_sent = sendto(sockfd, payload_buf, strlen(payload_buf)+1, 0,
                             servinfo->ai_addr, servinfo->ai_addrlen);
         printf("Nombre de bytes envoyés : %d\n", bytes_sent);
         printf("Chaine envoyée : %s\n", payload_buf);
-        free(payload_buf);
+        */
+
+        pkt_del(packet);
       }
     }
   }
