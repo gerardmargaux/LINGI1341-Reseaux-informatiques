@@ -122,8 +122,18 @@ int main(int argc, char *argv[]) {
   }
 
   // Reception d'un paquet du sender
+<<<<<<< HEAD
   // Envoie d'un ACK
 
+=======
+  pkt_t * buffer = (pkt_t *)malloc(32*sizeof(pkt_t));
+  if (buffer == NULL){
+    fprintf(stderr, "ERROR : fonction malloc()\n");
+    return -1
+  }
+
+  // Envoi d'un ACK
+>>>>>>> 8823b29cb691f7594a26040416a2c23e411977ad
   pkt_t * nouveau = pkt_new();
   nouveau->type = 2;
 */
