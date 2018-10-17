@@ -20,14 +20,7 @@ struct __attribute__((__packed__)) pkt {
 
 pkt_t* pkt_new()
 {
-	pkt_t *packet=(pkt_t *) malloc(sizeof(pkt_t));
-	if(packet==NULL){
-        return NULL;
-    }
-    else{
-        packet->payload=NULL;
-        return packet;
-    }
+	return calloc(1, sizeof(pkt_t));
 	/*
 	pkt_t * new = (pkt_t *) malloc(sizeof(pkt_t));
   if (new == NULL){
@@ -193,7 +186,7 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
 	if (MAX_PAYLOAD_SIZE < size_len){
 		return E_LENGTH;
 	}
-	
+
   // On encode le header
   uint8_t premier_byte = type<<6 | tr<<5; // premier byte = 0110 0000
   buf[0] = premier_byte | window; // Pour completer le byte
@@ -210,7 +203,7 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
 	memcpy(buf+8, &crc1, 4);
 
 	// On encode le payload
-	if (length != 0 && size_len != 0){
+	if (length != 0){
 		memcpy(buf+12, pkt->payload, size_len);
 	}
 
@@ -338,9 +331,6 @@ pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t len
 	if (length > MAX_PAYLOAD_SIZE){
     return E_LENGTH;
   }
-	if(pkt->payload == NULL){
-			return E_NOMEM;
-	}
   pkt->payload = realloc(pkt->payload, length);
   memcpy(pkt->payload, data, length);
   return PKT_OK;
