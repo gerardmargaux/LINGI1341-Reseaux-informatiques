@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
   int err; // Variable pour error check
   int fd = STDIN; // File descriptor avec lequel on va lire les données
   int bytes_read; // Nombre de bytes lus à chaque itération
-  pkt_status_code err_code; // Variable pour error check avec le paquets
+  pkt_status_code err_code; // Variable pour error check avec les paquets
 
   pkt_t* packet = pkt_new();
 
@@ -127,6 +127,19 @@ int main(int argc, char *argv[]) {
     close(fd);
     return -1;
   }
+
+  struct sockaddr_storage client_addr;
+  socklen_t addr_size;
+  int client_fd = accept(sockfd, (struct sockaddr *) &client_addr, &addr_size);
+  if(client_fd == -1){
+    perror("Erreur accept");
+    freeaddrinfo(servinfo);
+    close(sockfd);
+    close(fd);
+    return -1;
+  }
+
+  printf("Connection successful !\n");
 
   freeaddrinfo(servinfo);
 
