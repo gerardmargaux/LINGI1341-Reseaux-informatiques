@@ -7,8 +7,11 @@
  *
  */
 
+ #include "lib.h"
  #include <stdlib.h>
  #include <stdio.h>
+ #include <stdint.h>
+ #include <stddef.h>
  #include <string.h>
  #include <sys/types.h>
  #include <sys/socket.h>
@@ -20,6 +23,7 @@
  #include <unistd.h>
  #include <getopt.h>
  #include <ctype.h>
+ #include <zlib.h>
 
  #define STD_IN 0
  #define STD_OUT 1

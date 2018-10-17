@@ -36,6 +36,7 @@ typedef enum {
 /* Alloue et initialise une struct pkt
  * @return: NULL en cas d'erreur */
 pkt_t* pkt_new();
+
 /* Libere le pointeur vers la struct pkt, ainsi que toutes les
  * ressources associees
  */
@@ -88,10 +89,12 @@ uint8_t  pkt_get_seqnum   (const pkt_t*);
 uint16_t pkt_get_length   (const pkt_t*);
 uint32_t pkt_get_timestamp(const pkt_t*);
 uint32_t pkt_get_crc1     (const pkt_t*);
+
 /* Renvoie un pointeur vers le payload du paquet, ou NULL s'il n'y
  * en a pas.
  */
 const char* pkt_get_payload(const pkt_t*);
+
 /* Renvoie le CRC2 dans l'endianness native de la machine. Si
  * ce field n'est pas present, retourne 0.
  */
@@ -109,6 +112,7 @@ pkt_status_code pkt_set_seqnum   (pkt_t*, const uint8_t seqnum);
 pkt_status_code pkt_set_length   (pkt_t*, const uint16_t length);
 pkt_status_code pkt_set_timestamp(pkt_t*, const uint32_t timestamp);
 pkt_status_code pkt_set_crc1     (pkt_t*, const uint32_t crc1);
+
 /* Defini la valeur du champs payload du paquet.
  * @data: Une succession d'octets representants le payload
  * @length: Le nombre d'octets composant le payload
@@ -116,6 +120,7 @@ pkt_status_code pkt_set_crc1     (pkt_t*, const uint32_t crc1);
 pkt_status_code pkt_set_payload(pkt_t*,
                                 const char *data,
                                 const uint16_t length);
+
 /* Setter pour CRC2. Les valeurs fournies sont dans l'endianness
  * native de la machine!
  */
