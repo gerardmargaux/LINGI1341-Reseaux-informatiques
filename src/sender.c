@@ -3,9 +3,9 @@
 // @Date : 22 octobre 2018
 
 /*
- * Sender : programme qui envoie des paquets de données sur le réseau.
- *
- */
+* Sender : programme qui envoie des paquets de données sur le réseau.
+*
+*/
 
 #include "lib.h"
 #include <stdlib.h>
@@ -34,9 +34,9 @@
 
 
 /*
- * main : Fonction principale
- *
- */
+* main : Fonction principale
+*
+*/
 int main(int argc, char *argv[]) {
 
   // Vérification du nombre d'arguments
@@ -50,9 +50,10 @@ int main(int argc, char *argv[]) {
   }
 
 
+  int err; // Variable pour error check
   int fd = STDIN; // File descriptor avec lequel on va lire les données
   int bytes_read; // Nombre de bytes lus à chaque itération
-  pkt_status_code err_code; // Variable pour error check
+  pkt_status_code err_code; // Variable pour error check avec le paquets
 
   pkt_t* packet = pkt_new();
 
@@ -85,43 +86,91 @@ int main(int argc, char *argv[]) {
   char* port = argv[optind+1];
   printf("Port : %s\n", port);
 
-while(1){
 
-  char* payload_buf = (char*) malloc(MAX_PAYLOAD_SIZE*sizeof(char));
-  if(payload_buf == NULL){
-    fprintf(stderr, "Erreur malloc : payload_buf\n");
+  // Création du socket
+  int sockfd; // Variable qui va contenir le file descriptor du socket
+  struct addrinfo hints, *servinfo;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET6;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_protocol = IPPROTO_UDP;
+
+  err = getaddrinfo(hostname, port, &hints, &servinfo);
+  if(err != 0){
+    perror("Erreur getaddrinfo");
+    close(fd);
     return -1;
   }
 
-  bytes_read = read(fd, payload_buf, MAX_PAYLOAD_SIZE);
-  if(bytes_read == -1){
-    perror("Erreur read");
-    free(payload_buf);
+  sockfd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
+  if(sockfd == -1){
+    perror("Erreur socket");
+    freeaddrinfo(servinfo);
+    close(fd);
     return -1;
   }
-  else if(bytes_read == 0){
-    printf("Lecture finie.\n");
-    free(payload_buf);
-    break;
+
+  err = bind(sockfd, servinfo->ai_addr, servinfo->ai_addrlen);
+  if(err == -1){
+    perror("Erreur bind");
+    freeaddrinfo(servinfo);
+    close(sockfd);
+    close(fd);
+    return -1;
   }
-  else{
-    if(fd == STDIN){
-      *(payload_buf+strlen(payload_buf)-1) = '\0';
-    }
-    printf("Chaine lue : %s\n", payload_buf);
-    err_code = pkt_set_payload(packet, (const char*) payload_buf,
-    (const uint16_t) strlen(payload_buf));
-    if(err_code != PKT_OK){
-      fprintf(stderr, "Erreur set payload\n");
-      free(payload_buf);
-      pkt_del(packet);
+
+  err = listen(sockfd, 1);
+  if(err = -1){
+    perror("Erreur listen");
+    freeaddrinfo(servinfo);
+    close(sockfd);
+    close(fd);
+    return -1;
+  }
+
+  freeaddrinfo(servinfo);
+
+  while(1){
+
+    char* payload_buf = (char*) malloc(MAX_PAYLOAD_SIZE*sizeof(char));
+    if(payload_buf == NULL){
+      fprintf(stderr, "Erreur malloc : payload_buf\n");
       return -1;
     }
-    printf("Données encodées dans le paquet : %s\n", pkt_get_payload(packet));
-    free(payload_buf);
-  }
-}
 
+    bytes_read = read(fd, payload_buf, MAX_PAYLOAD_SIZE);
+    if(bytes_read == -1){
+      perror("Erreur read");
+      free(payload_buf);
+      return -1;
+    }
+    else if(bytes_read == 0){
+      printf("Lecture finie.\n");
+      free(payload_buf);
+      break;
+    }
+    else{
+      if(fd == STDIN){
+        *(payload_buf+strlen(payload_buf)-1) = '\0';
+      }
+      printf("Chaine lue : %s\n", payload_buf);
+      err_code = pkt_set_payload(packet, (const char*) payload_buf,
+      (const uint16_t) strlen(payload_buf));
+      if(err_code != PKT_OK){
+        fprintf(stderr, "Erreur set payload\n");
+        free(payload_buf);
+        pkt_del(packet);
+        return -1;
+      }
+      printf("Données encodées dans le paquet : %s\n", pkt_get_payload(packet));
+      free(payload_buf);
+    }
+  }
+
+  close(sockfd);
   pkt_del(packet);
+  if(fd != 0){
+    close(fd);
+  }
   return 0;
 }
