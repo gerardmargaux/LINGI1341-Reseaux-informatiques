@@ -65,7 +65,7 @@ void pkt_del(pkt_t *pkt)
  * Decode des donnees recues et cree une nouvelle structure pkt.
  * Le paquet recu est en network byte-order.
  * La fonction verifie que:
- * - Le CRC32 du header recu est le mÃªme que celui decode a la fin
+ * - Le CRC32 du header recu est le même que celui decode a la fin
  *   du header (en considerant le champ TR a 0)
  * - S'il est present, le CRC32 du payload recu est le meme que celui
  *   decode a la fin du payload
