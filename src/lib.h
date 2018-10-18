@@ -127,7 +127,7 @@ pkt_t* pkt_init(ptypes_t type, uint8_t tr, uint8_t window, uint8_t seqnum,
  * @return: Un code indiquant si l'operation a reussi ou E_NOMEM si
  *         le buffer est trop petit.
  */
-pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len);
+pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len);
 
 /*
  * Decode des donnees recues et cree une nouvelle structure pkt.
@@ -149,7 +149,7 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len);
  * @return: Un code indiquant si l'operation a reussi ou representant
  *         l'erreur rencontree.
  */
-pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt);
+pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt);
 
 /* Resolve the resource name to an usable IPv6 address
  * @address: The name to resolve

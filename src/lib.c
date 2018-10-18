@@ -255,7 +255,7 @@ pkt_t* pkt_init(ptypes_t type, uint8_t tr, uint8_t window, uint8_t seqnum,
  * @return: Un code indiquant si l'operation a reussi ou representant
  *         l'erreur rencontree.
  */
- pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt)
+ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt)
  {
    if (len == 0){ // Le paquet est incoherent
  		pkt_del(pkt);
@@ -335,58 +335,72 @@ pkt_t* pkt_init(ptypes_t type, uint8_t tr, uint8_t window, uint8_t seqnum,
  * @return: Un code indiquant si l'operation a reussi ou E_NOMEM si
  *         le buffer est trop petit.
  */
-pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
+pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
  {
+
   // Gerer le header
   //const char * payload = pkt_get_payload(pkt);
-  uint8_t window = htons(pkt_get_window(pkt));
-  uint8_t type = htons(pkt_get_type(pkt));
-  uint8_t tr = htons(pkt_get_tr(pkt));
-  uint8_t seqnum = htons(pkt_get_seqnum(pkt));
-  uint16_t length = htons(pkt_get_length(pkt)); // 2 bytes
-
-  // + 4 bytes timestamp + 4 bytes crc1 = 12 bytes
+  uint8_t window = pkt_get_window(pkt);
+	if(window > 31 || window < 0){
+		return E_WINDOW;
+	}
+  uint8_t type = pkt_get_type(pkt);
+	if(type != PTYPE_DATA && type != PTYPE_ACK && type != PTYPE_NACK){
+		return E_TYPE;
+	}
+  uint8_t tr = pkt_get_tr(pkt);
+	if(tr != 0 && tr != 1){
+		return E_TR;
+	}
+  uint8_t seqnum = pkt_get_seqnum(pkt);
+	if(seqnum < 0 || seqnum > 255){
+		return E_SEQNUM;
+	}
+  uint16_t length = pkt_get_length(pkt); // 2 bytes
+	if(length < 0 || length > 512){
+		return E_LENGTH;
+	}
+	uint32_t timestamp = htons(pkt_get_timestamp(pkt)); // 4 bytes
+	const char* payload = pkt_get_payload(pkt); // up to 512 bytes
 
 	// Teste si le buffer est trop petit
-	if(*len < 12){
+	if(len < length+16){
 		return E_NOMEM;
 	}
-  // On encode le header
 
-	// Type
+	length = htons(length);
+
+	// Premier byte
   uint8_t type_format = type<<6 & 0b00000011000000;
 	uint8_t tr_format = tr<<5 & 0b00000100000;
 	uint8_t window_format = window & 0b00011111;
-  *(buf) = type_format | tr_format | window_format; // Pour completer le byte
+	uint8_t firstbyte = type_format | tr_format | window_format;
+  memcpy(buf, &firstbyte, 1);
 
-	memcpy(buf + sizeof(uint8_t), &seqnum, sizeof(uint8_t)); // seqnum
-  memcpy(buf + sizeof(uint16_t), &length, sizeof(uint16_t)); // length
+	// Deuxième byte
+	memcpy(buf+1, &seqnum, 1); // seqnum
+
+	// Troisième et quatrième bytes
+  memcpy(buf+2, &length, 2); // length
+
+	// Quatrième au huitième byte
+	memcpy(buf+4, &timestamp, 4); // timestamp
 
   // Gerer les CRC
-  uLong crc1 = crc32(0L, Z_NULL, 0);
-  crc1 = crc32(crc1,(const Bytef *) buf, 8);
+  uint32_t crc1 = htons(crc32(0, (const Bytef *) buf, 8));
+  // Huitième au douzième byte : crc1
+	memcpy(buf+8, &crc1, 4);
 
-  // On encode le crc1
-	size_t i;
-  for(i = 0 ; i<4; i++){
- 	 buf[8+i] = buf[i]; // Le crc1 commence apres 8 bytes
-  }
+	// Si le paquet n'est pas tronqué
+	if(tr == 0){
+  	memcpy(buf+12, payload, ntohs(length)); // 12e -> 524e byte : payload
 
-  if(pkt_get_tr(pkt) == 0){ // Si le paquet n'est pas tronque --> crc2
-		uLong crc2 = crc32(0L, Z_NULL, 0);
- 	 	crc2 = crc32(crc2,((const Bytef *)buf), 8);
- 	 // On encode le crc2
-	 for(i = 0 ; i<4; i++){
-  	 buf[length+12] = buf[i]; // Le crc2 apres 12 bytes + la longueur du payload
-   }
-  }
+		uint32_t crc2 = htons(crc32(0, (const Bytef *) buf, ntohs(length))); // Calcul du crc2
+	 	memcpy(buf+12+ntohs(length), &crc2, 4);
+	}
 
-  // On encode le payload
-  for(i = 0; i < 4; i++){ // Jusque 4 ou 9 ?
- 	 buf[12+i] = buf[i]; // Le payload commence apres 12 bytes
-  }
-  return PKT_OK;
- }
+	return PKT_OK;
+}
 
 
 /* Resolve the resource name to an usable IPv6 address
