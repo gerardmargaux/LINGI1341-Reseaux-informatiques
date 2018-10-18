@@ -705,7 +705,7 @@ int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window){
 		return 1;
 	}
 
-	if (len_window > MAX_WINDOW_SIZE){
+	if ((max_window - min_window) > MAX_WINDOW_SIZE){
 		printf("La fenetre a une taille trop grande\n");
 		return 1;
 	}

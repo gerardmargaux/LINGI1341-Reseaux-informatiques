@@ -211,7 +211,7 @@ int seqnum_inc(int* seqnum);
  *					 -1 si il est hors de la fenetre. Le paquet recu est discardé
  *
  */
-int in_window ();
+int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window);
 
 
 #endif
