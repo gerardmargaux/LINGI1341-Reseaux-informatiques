@@ -204,4 +204,14 @@ int wait_for_client(int sfd);
 int seqnum_inc(int* seqnum);
 
 
+/*
+ * Vérifie si le numéro de séquence est dans la fenetre
+ *
+ * @return : 0 si il est dans la fenetre et est ajouté au buffer de reception
+ *					 -1 si il est hors de la fenetre. Le paquet recu est discardé
+ *
+ */
+int in_window ();
+
+
 #endif
