@@ -214,4 +214,13 @@ int seqnum_inc(int* seqnum);
 int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window);
 
 
+/*
+ * Ajoute un buffer dans le buffer d'envoi ou de reception
+ *
+ * @return : - le buffer d'envoi ou de reception modifié
+ *
+ */
+uint8_t ** ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept);
+
+
 #endif
