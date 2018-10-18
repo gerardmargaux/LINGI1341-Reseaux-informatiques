@@ -693,12 +693,12 @@ int seqnum_inc(int* seqnum){
 /*
  * Vérifie si le numéro de séquence est dans la fenetre
  *
- * @return : 0 si il est dans la fenetre et est ajouté au buffer de reception
- *					 -1 si il est hors de la fenetre. Le paquet recu est discardé
+ * @return : 0 si il est dans la fenetre
+ *					 -1 si il est hors de la fenetre
  *					 1 si une erreur d'argument
  *
  */
-int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window, uint8_t * buffer_recept){
+int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window){
 
 	if (seqnum > 255){
 		printf("Le numero de sequence n'est pas valide\n");
@@ -717,7 +717,5 @@ int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window, uint8_t *
 	}
 
 	// Si le numero de sequence se trouve dans la fenetre
-
-
 	return 0;
 }
