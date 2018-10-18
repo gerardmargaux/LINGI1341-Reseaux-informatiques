@@ -63,21 +63,24 @@ int main(int argc, char const *argv[]) {
 
   printf("Encode OK\n");
 
-  int result;
-  memcpy(&result, buf, 1);
-  printf("1er byte : %d\n", result);
+  uint8_t result8;
+  uint16_t result16;
+  uint32_t result32;
 
-  memcpy(&result, buf+1, 1);
-  printf("2e byte : %d\n", result);
+  memcpy(&result8, buf, 1);
+  printf("1er byte : %u\n", result8);
 
-  memcpy(&result, buf+2, 2);
-  printf("Longueur : %d\n", ntohs(result));
+  memcpy(&result8, buf+1, 1);
+  printf("Seqnum : %u\n", result8);
 
-  memcpy(&result, buf+4, 4);
-  printf("Timestamp : %d\n", ntohs(result));
+  memcpy(&result16, buf+2, 2);
+  printf("Longueur : %u\n", ntohs(result16));
 
-  memcpy(&result, buf+8, 4);
-  printf("CRC1 : %d\n", ntohs(result));
+  memcpy(&result32, buf+4, 4);
+  printf("Timestamp : %u\n", ntohl(result32));
+
+  memcpy(&result32, buf+8, 4);
+  printf("CRC1 : %u\n", ntohl(result32));
 
   char* data_received = (char*) malloc(512*sizeof(char));
   if(data_received == NULL){
@@ -88,11 +91,12 @@ int main(int argc, char const *argv[]) {
   memcpy(data_received, buf+12, pkt_get_length(packet));
   printf("Payload : %s\n", data_received);
 
-  memcpy(&result, buf+12+pkt_get_length(packet), 4);
-  printf("CRC2 : %d\n", ntohs(result));
+  memcpy(&result32, buf+12+pkt_get_length(packet), 4);
+  printf("CRC2 : %u\n", ntohl(result32));
 
 
   pkt_del(packet);
   free(buf);
+
   return 0;
 }
