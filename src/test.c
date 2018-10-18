@@ -26,7 +26,6 @@
 
 int main(int argc, char const *argv[]) {
 
-  size_t len = 528;
   const char *data = argv[1];
   pkt_status_code err_code;
   pkt_t *packet = pkt_new();
@@ -54,6 +53,7 @@ int main(int argc, char const *argv[]) {
     return -1;
   }
 
+  size_t len = 16 + pkt_get_length(packet);
   err_code = pkt_encode(packet, buf, len);
   if(err_code != PKT_OK){
     pkt_del(packet);
@@ -63,37 +63,26 @@ int main(int argc, char const *argv[]) {
 
   printf("Encode OK\n");
 
-  uint8_t result8;
-  uint16_t result16;
-  uint32_t result32;
+  pkt_t *packet2 = pkt_new();
 
-  memcpy(&result8, buf, 1);
-  printf("1er byte : %u\n", result8);
-
-  memcpy(&result8, buf+1, 1);
-  printf("Seqnum : %u\n", result8);
-
-  memcpy(&result16, buf+2, 2);
-  printf("Longueur : %u\n", ntohs(result16));
-
-  memcpy(&result32, buf+4, 4);
-  printf("Timestamp : %u\n", ntohl(result32));
-
-  memcpy(&result32, buf+8, 4);
-  printf("CRC1 : %u\n", ntohl(result32));
-
-  char* data_received = (char*) malloc(512*sizeof(char));
-  if(data_received == NULL){
+  err_code = pkt_decode(buf, len, packet2);
+  if(err_code != PKT_OK){
     pkt_del(packet);
-    free(buf);
+    fprintf(stderr, "Erreur decode\n");
     return -1;
   }
-  memcpy(data_received, buf+12, pkt_get_length(packet));
-  printf("Payload : %s\n", data_received);
 
-  memcpy(&result32, buf+12+pkt_get_length(packet), 4);
-  printf("CRC2 : %u\n", ntohl(result32));
+  printf("Decode OK\n");
 
+  printf("Type du paquet : %u\n", pkt_get_type(packet2));
+  printf("Tr du paquet : %u\n", pkt_get_tr(packet2));
+  printf("Window du paquet : %u\n", pkt_get_window(packet2));
+  printf("Seqnum du paquet : %u\n", pkt_get_seqnum(packet2));
+  printf("Length du paquet : %u\n", pkt_get_length(packet2));
+  printf("Timestamp du paquet : %u\n", pkt_get_timestamp(packet2));
+  printf("CRC1 du paquet : %u\n", pkt_get_crc1(packet2));
+  printf("Payload du paquet : %s\n", pkt_get_payload(packet2));
+  printf("CRC2 du paquet : %u\n", pkt_get_crc2(packet2));
 
   pkt_del(packet);
   free(buf);

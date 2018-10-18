@@ -258,19 +258,13 @@ pkt_t* pkt_init(ptypes_t type, uint8_t tr, uint8_t window, uint8_t seqnum,
 pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 
 	if (len == 0){ // Le paquet est incoherent
- 		pkt_del(pkt);
   	return E_UNCONSISTENT;
   }
   else if (len < 12){ // Il n'y a pas de header car il est encode sur 12 bytes
- 		pkt_del(pkt);
     return E_NOHEADER;
   }
 
 	// Initialisation des variables
-	char * payload = (char *) malloc(512*sizeof(char));
- 	if(payload == NULL){
- 		return E_NOMEM;
- 	}
 	ptypes_t type;
 	uint8_t tr;
 	uint8_t window;
@@ -278,22 +272,42 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 	uint16_t length;
 	uint32_t timestamp;
 	uint32_t crc1_recv;
-	//uint32_t crc2_recv;
+	uint32_t crc2_recv;
 
 	// Premier byte : type, tr, window
 	uint8_t first_byte;
 	memcpy(&first_byte, data, 1);
 
 	type = first_byte>>6;
+	if(type != PTYPE_DATA && type != PTYPE_ACK && type != PTYPE_NACK){
+		fprintf(stderr, "Erreur type\n");
+		return E_TYPE;
+	}
 	tr = first_byte>>5 & 0b00000001;
+	if(tr != 1 && tr != 0){
+		fprintf(stderr, "Erreur tr\n");
+		return E_TR;
+	}
 	window = first_byte & 0b00011111;
+	if(window > 31 || window < 0){
+		fprintf(stderr, "Erreur window\n");
+		return E_WINDOW;
+	}
 
 	// Deuxième byte : seqnum
 	memcpy(&seqnum, data+1, 1);
+	if(seqnum < 0 || seqnum > 255){
+		fprintf(stderr, "Erreur seqnum\n");
+		return E_SEQNUM;
+	}
 
 	// 3e et 4e bytes : length
 	memcpy(&length, data+2, 2);
 	length = ntohs(length);
+	if(length < 0 || length > 512){
+		fprintf(stderr, "Erreur length\n");
+		return E_LENGTH;
+	}
 
 	// 5e -> 8e bytes : timestamp
 	memcpy(&timestamp, data+4, 4);
@@ -302,13 +316,87 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 	// 9e -> 12e bytes : CRC1
 	memcpy(&crc1_recv, data+8, 4);
 	crc1_recv = ntohl(crc1_recv);
-
+	// On vérifie si les deux CRC sont les mêmes
 	uint32_t crc1_check = crc32(0, (const Bytef *) data, 8);
 	if(crc1_recv != crc1_check){
-		free(payload);
-		pkt_del(pkt);
+		fprintf(stderr, "Erreur CRC1\n");
 		return E_CRC;
 	}
+
+
+	char * payload = (char *) malloc(512*sizeof(char));
+	if(payload == NULL){
+		fprintf(stderr, "Erreur payload\n");
+		return E_NOMEM;
+	}
+
+	if(type == PTYPE_DATA){
+
+		// Payload
+		memcpy(payload, data+12, length);
+
+		// CRC2
+		memcpy(&crc2_recv, data+12+length, 4);
+		crc2_recv = ntohl(crc2_recv);
+		// On vérifie si les deux CRC sont les mêmes
+		uint32_t crc2_check = crc32(0, (const Bytef *) data+12, length);
+		if(crc2_recv != crc2_check){
+			fprintf(stderr, "Erreur CRC2\n");
+			free(payload);
+			return E_CRC;
+		}
+
+	}
+
+	// Encodage des valeurs dans la structure pkt
+	pkt_status_code err_code;
+
+	err_code = pkt_set_type(pkt, type);
+	if(err_code != PKT_OK){
+		free(payload);
+		return E_TYPE;
+	}
+
+	err_code = pkt_set_tr(pkt, tr);
+	if(err_code != PKT_OK){
+		free(payload);
+		return E_TR;
+	}
+
+	err_code = pkt_set_window(pkt, window);
+	if(err_code != PKT_OK){
+		free(payload);
+		return E_WINDOW;
+	}
+
+	err_code = pkt_set_seqnum(pkt, seqnum);
+	if(err_code != PKT_OK){
+		free(payload);
+		return E_SEQNUM;
+	}
+
+	err_code = pkt_set_length(pkt, length);
+	if(err_code != PKT_OK){
+		free(payload);
+		return E_LENGTH;
+	}
+
+	err_code = pkt_set_timestamp(pkt, timestamp);
+
+	err_code = pkt_set_crc1(pkt, crc1_recv);
+
+	err_code = pkt_set_payload(pkt, payload, length);
+	if(err_code != PKT_OK){
+		free(payload);
+		return E_LENGTH;
+	}
+
+	err_code = pkt_set_crc2(pkt, crc2_recv);
+
+
+	return PKT_OK;
+
+}
 
 
 	/*
@@ -361,8 +449,6 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
   }
   pkt_set_crc2(pkt, crc2);
 	*/
-	return PKT_OK;
-}
 
 /*
  * Encode une struct pkt dans un buffer, pret a etre envoye sur le reseau
@@ -428,6 +514,7 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
 
   // Gerer les CRC
   uint32_t crc1 = htonl(crc32(0, (const Bytef *) buf, 8));
+	printf("Calcul de CRC1 : %u\n", ntohl(crc1));
   // Huitième au douzième byte : crc1
 	memcpy(buf+8, &crc1, 4);
 
@@ -435,7 +522,8 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
 	if(tr == 0){
   	memcpy(buf+12, payload, ntohs(length)); // 12e -> 524e byte : payload
 
-		uint32_t crc2 = htons(crc32(0, (const Bytef *) buf, ntohs(length))); // Calcul du crc2
+		uint32_t crc2 = htonl(crc32(0, (const Bytef *) buf+12, ntohs(length))); // Calcul du crc2
+		printf("Calcul de CRC2 : %u\n", ntohl(crc2));
 	 	memcpy(buf+12+ntohs(length), &crc2, 4);
 	}
 
