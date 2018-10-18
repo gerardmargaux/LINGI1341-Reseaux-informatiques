@@ -1,21 +1,31 @@
-all: test_self test_unco
+main: clean lib sender receiver
 
-test_self: test_self.o
-	@gcc -Wall -o test_self test_self.o
+sender: sender.o
+	@gcc -Wall -o $@ sender.o lib.a -lz
 
-test_self.o:
-	@gcc -Wall -o test_self.o -c test_self.c
+sender.o:
+	@gcc -Wall -o sender.o -c sender.c -lz
 
-test_unco: test_unco.o
-	@gcc -Wall -o $@ $<
+receiver: receiver.o
+	@gcc -Wall -o $@ receiver.o lib.a -lz
 
-test_unco.o:
-	@gcc -Wall -o $@ -c test_unco.c
+receiver.o:
+	@gcc -Wall -o receiver.o -c receiver.c -lz
 
-.PHONY: clean clear
+lib: lib.o
+	@ar r lib.a lib.o
 
-clean: clear
-	@rm -f *.o test_self test_unco
+lib.o:
+	@gcc -Wall -o lib.o -c lib.c -lz
 
-clear:
-	@clear
+test: clean lib test.o
+	@gcc -Wall -o $@ test.o lib.a -lz
+
+test.o:
+	@gcc -Wall -o test.o -c test.c -lz
+
+.PHONY: clean tests
+
+clean:
+	@rm -f *.o *.a sender receiver test && clear
+
