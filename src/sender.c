@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
-        err_code = pkt_set_window(packet, window)
+        err_code = pkt_set_window(packet, window);
         if(err == -1){
           pkt_del(packet);
           close(sockfd);
@@ -180,13 +180,13 @@ int main(int argc, char *argv[]) {
         uint8_t * buffer_encode = (uint8_t *)malloc(1024*sizeof(uint8_t));
         if (buffer_encode == NULL){
           fprintf(stderr, "Erreur malloc : buffer_encode\n");
-          return -1
+          return -1;
         }
 
         size_t len_buffer_encode = sizeof(buffer_encode);
 
         // Encodage du paquet a envoyer sur le reseau
-        return_code =  pkt_encode(packet, buffer_encode, len_buffer_encode);
+        err_code =  pkt_encode(packet, buffer_encode, len_buffer_encode);
         if(err_code != PKT_OK){
           pkt_del(packet);
           close(sockfd);

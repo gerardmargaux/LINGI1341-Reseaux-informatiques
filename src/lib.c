@@ -278,7 +278,7 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 	uint16_t length;
 	uint32_t timestamp;
 	uint32_t crc1_recv;
-	uint32_t crc2_recv;
+	//uint32_t crc2_recv;
 
 	// Premier byte : type, tr, window
 	uint8_t first_byte;

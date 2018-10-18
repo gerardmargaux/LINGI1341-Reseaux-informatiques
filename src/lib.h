@@ -28,6 +28,8 @@ typedef enum {
 	PTYPE_NACK = 3,
 } ptypes_t;
 
+
+
 /* Taille maximale permise pour le payload */
 #define MAX_PAYLOAD_SIZE 512
 /* Taille maximale de Window */
