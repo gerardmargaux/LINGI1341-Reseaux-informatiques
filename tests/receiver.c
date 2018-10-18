@@ -52,12 +52,11 @@ int main(int argc, char *argv[]) {
 
 
   int err; // Variable pour error check
-  pkt_status_code err_code; // Variable pour error check
+  pkt_status_code err_code; // Variable pour error check avec les paquets
   int fd = STDOUT; // File descriptor avec lequel on va écrire les données
   int bytes_received = 1; // Nombre de bytes reçus du sender
-  int bytes_written; // Nombre de bytes écrits à chaque itération
-  //pkt_status_code err_code; // Variable pour error check avec les paquets
-  //int bytes_sent; // Nombre de bytes renvoyes au sender (ack)
+  //int bytes_written; // Nombre de bytes écrits à chaque itération
+  int bytes_sent; // Nombre de bytes renvoyes au sender (ack)
 
   // Prise en compte des arguments avec getopt()
   extern char* optarg;
@@ -128,7 +127,7 @@ int main(int argc, char *argv[]) {
   while(bytes_received > 0){
 
     uint8_t* data_received = (uint8_t*) malloc(528);
-    bytes_received = recvfrom(sockfd, data_received, 528, 0,(struct sockaddr *) &sender_addr, (socklen_t *) &addr_len);
+    bytes_received = recvfrom(sockfd, data_received, 528, 0, (struct sockaddr *) &sender_addr, &addr_len);
     if(strcmp((char*) data_received, "STOP") == 0){
       printf("Fin de la réception de données\n");
       break;
@@ -148,10 +147,9 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
-    /*
     // Si le paquet recu est tronque
     // On renvoie un paquet de type NACK au sender
-    if (pkt_get_type(new_packet) == PTYPE_NACK){
+    if (pkt_get_tr(new_packet) == 1){
 
         uint8_t seqnum = pkt_get_seqnum(new_packet);
         uint8_t window = 3;
@@ -200,91 +198,62 @@ int main(int argc, char *argv[]) {
 
         bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
       }
-      */
 
-      //else { // Si le paquet recu n'est pas tronque
+      else { // Si le paquet recu n'est pas tronque
 
-      // Ecriture du buffer recu dans un fichier ou sur la sortie standard
-      if(fd == STDOUT){
-        printf("Données reçues : %s\n", pkt_get_payload(new_packet));
-        printf("Type : %u\n", pkt_get_type(new_packet));
-        printf("Tr : %u\n", pkt_get_tr(new_packet));
-        printf("Window : %u\n", pkt_get_window(new_packet));
-        printf("Seqnum : %u\n", pkt_get_seqnum(new_packet));
-        printf("Length : %u\n", pkt_get_length(new_packet));
-        printf("Timestamp : %u\n", pkt_get_timestamp(new_packet));
-        printf("CRC1 : %u\n", pkt_get_crc1(new_packet));
-        printf("CRC2 : %u\n", pkt_get_crc2(new_packet));
-      }
-      else{
-        bytes_written = write(fd, pkt_get_payload(new_packet), pkt_get_length(new_packet));
-        if(bytes_written < 0){
-          perror("Erreur write");
+
+        uint8_t seqnum = pkt_get_seqnum(new_packet);
+        uint8_t window = 3;
+        pkt_t * packet_ack = pkt_ack_new();
+
+        err_code = pkt_set_seqnum(packet_ack, seqnum);
+        if (err_code != PKT_OK){
+          pkt_del(packet_ack);
           close(sockfd);
           close(fd);
           return -1;
         }
-      }
 
-      pkt_del(new_packet);
-    }
+        err_code = pkt_set_window(packet_ack, window);
+        if (err_code != PKT_OK){
+          pkt_del(packet_ack);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
 
+        uint8_t * buffer_encode = (uint8_t *)malloc(16*sizeof(uint8_t));
+        if (buffer_encode == NULL){
+          fprintf(stderr, "Erreur malloc : buffer_encode\n");
+          return -1;
+        }
 
+        size_t len_buffer_encode = 16;
 
-      /*
-      uint8_t seqnum = pkt_get_seqnum(new_packet);
-      uint8_t window = 3;
-      pkt_t * packet_ack = pkt_new();
+        // Encodage du paquet a envoyer sur le reseau
+        err_code =  pkt_encode(packet_ack, buffer_encode, len_buffer_encode);
+        if(err_code != PKT_OK){
+          pkt_del(packet_ack);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
 
-      err_code = pkt_set_seqnum(packet_ack, seqnum);
-      if (err_code != PKT_OK){
         pkt_del(packet_ack);
-        close(sockfd);
-        close(fd);
-        return -1;
+
+        // Envoi du packet sur le reseau
+        bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
+        if(bytes_sent < 0){
+          perror("Erreur send ack");
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+        printf("Fin de l'envoi du ack\n");
+        free(buffer_encode);
+        printf("Test\n");
       }
-
-      err_code = pkt_set_type(packet_ack, PTYPE_ACK);
-      if (err_code != PKT_OK){
-        pkt_del(packet_ack);
-        close(sockfd);
-        close(fd);
-        return -1;
-      }
-
-      err_code = pkt_set_window(packet_ack, window);
-      if (err_code != PKT_OK){
-        pkt_del(packet_ack);
-        close(sockfd);
-        close(fd);
-        return -1;
-      }
-
-      uint8_t * buffer_encode = (uint8_t *)malloc(1024*sizeof(uint8_t));
-      if (buffer_encode == NULL){
-        fprintf(stderr, "Erreur malloc : buffer_encode\n");
-        return -1;
-      }
-
-      size_t len_buffer_encode = sizeof(buffer_encode);
-
-      // Encodage du paquet a envoyer sur le reseau
-      int return_code =  pkt_encode(packet_ack, buffer_encode, len_buffer_encode);
-      if(return_code != PKT_OK){
-        pkt_del(packet_ack);
-        close(sockfd);
-        close(fd);
-        return -1;
-      }
-
-      // Envoi du packet sur le reseau
-      bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
-      printf("Fin de l'envoi du packet\n");
-      free(buffer_encode);
-    }
-    }
   }
-*/
 
 /*
 

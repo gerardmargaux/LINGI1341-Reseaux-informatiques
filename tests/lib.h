@@ -56,6 +56,8 @@ typedef enum {
  * @return: NULL en cas d'erreur */
 pkt_t* pkt_new();
 
+pkt_t* pkt_ack_new();
+
 /* Libere le pointeur vers la struct pkt, ainsi que toutes les
  * ressources associees
  */

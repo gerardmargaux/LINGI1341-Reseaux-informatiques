@@ -54,10 +54,15 @@ int main(int argc, char *argv[]) {
   int fd = STDIN; // File descriptor avec lequel on va lire les données
   int bytes_read; // Nombre de bytes lus sur l'entrée standard / le fichier source
   int bytes_sent; // Nombre de bytes envoyés au receiver
+  int bytes_received; // Nombre de bytes reçus du receiver
   pkt_status_code err_code; // Variable pour error check avec les paquets
 
   int window = 4;
   int seqnum = 142;
+
+  struct sockaddr_in6 receiver_addr;
+  memset(&receiver_addr, 0, sizeof(receiver_addr));
+  socklen_t addr_len = sizeof(struct sockaddr);
 
 
 
@@ -209,12 +214,36 @@ int main(int argc, char *argv[]) {
         }
         printf("Fin de l'envoi du packet\n");
         free(payload_buf);
-
-        //printf("Numéro de séquence du paquet : %d\n", pkt_get_seqnum(packet));
-        //printf("Données encodées dans le paquet : %s\n", pkt_get_payload(packet));
-
-
         pkt_del(packet);
+
+
+
+        uint8_t* ack_buffer = (uint8_t*) malloc(16);
+        printf("Test 1\n");
+        bytes_received = recvfrom(sockfd, ack_buffer, 16, 0, (struct sockaddr *) &receiver_addr, &addr_len);
+        if(bytes_received < 0){
+          perror("Erreur receive ACK");
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+
+        pkt_t* ack_received = pkt_ack_new();
+
+        err_code = pkt_decode(ack_buffer, 16, ack_received);
+        free(ack_buffer);
+        if(err_code != PKT_OK){
+          fprintf(stderr, "Erreur decode\n");
+          pkt_del(ack_received);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+
+        printf("Reçu ACK pour paquet %d\n", pkt_get_seqnum(ack_received));
+
+        free(ack_received);
+
       }
     }
   }
