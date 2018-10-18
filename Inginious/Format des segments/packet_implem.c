@@ -20,8 +20,6 @@ struct __attribute__((__packed__)) pkt {
 
 pkt_t* pkt_new()
 {
-	return calloc(1, sizeof(pkt_t));
-	/*
 	pkt_t * new = (pkt_t *) malloc(sizeof(pkt_t));
   if (new == NULL){
     fprintf(stderr, "Erreur du malloc");
@@ -41,7 +39,6 @@ pkt_t* pkt_new()
     return NULL;
   }
   return new;
-	*/
 }
 
 

@@ -400,7 +400,7 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
 	if(length < 0 || length > 512){
 		return E_LENGTH;
 	}
-	uint32_t timestamp = htons(pkt_get_timestamp(pkt)); // 4 bytes
+	uint32_t timestamp = htonl(pkt_get_timestamp(pkt)); // 4 bytes
 	const char* payload = pkt_get_payload(pkt); // up to 512 bytes
 
 	// Teste si le buffer est trop petit
@@ -427,7 +427,7 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
 	memcpy(buf+4, &timestamp, 4); // timestamp
 
   // Gerer les CRC
-  uint32_t crc1 = htons(crc32(0, (const Bytef *) buf, 8));
+  uint32_t crc1 = htonl(crc32(0, (const Bytef *) buf, 8));
   // Huitième au douzième byte : crc1
 	memcpy(buf+8, &crc1, 4);
 

@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
   int bytes_sent; // Nombre de bytes envoyés au receiver
   pkt_status_code err_code; // Variable pour error check avec les paquets
 
-  int window = 0;
+  int window = 4;
   int seqnum = htons(0b00000000);
 
 
@@ -132,8 +132,7 @@ int main(int argc, char *argv[]) {
       return -1;
     }
     else if(bytes_read == 0){
-      bytes_sent = sendto(sockfd, "STOP", 5, 0,
-                          servinfo->ai_addr, servinfo->ai_addrlen);
+      bytes_sent = sendto(sockfd, "STOP", 5, 0, servinfo->ai_addr, servinfo->ai_addrlen);
       printf("Fin de l'envoi de données.\n");
       free(payload_buf);
       break;
@@ -153,6 +152,7 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
+
         err_code = pkt_set_seqnum(packet, seqnum);
         if(err_code != PKT_OK){
           pkt_del(packet);
@@ -160,6 +160,7 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
+
         err = seqnum_inc(&seqnum);
         if(err == -1){
           pkt_del(packet);
@@ -167,6 +168,36 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
+
+        err_code = pkt_set_window(packet, window)
+        if(err == -1){
+          pkt_del(packet);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+
+        uint8_t * buffer_encode = (uint8_t *)malloc(1024*sizeof(uint8_t));
+        if (buffer_encode == NULL){
+          fprintf(stderr, "Erreur malloc : buffer_encode\n");
+          return -1
+        }
+
+        size_t len_buffer_encode = sizeof(buffer_encode);
+
+        // Encodage du paquet a envoyer sur le reseau
+        return_code =  pkt_encode(packet, buffer_encode, len_buffer_encode);
+        if(err_code != PKT_OK){
+          pkt_del(packet);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+
+        // Envoi du packet sur le reseau
+        bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
+        printf("Fin de l'envoi du packet\n");
+        free(buffer_encode);
 
         printf("Numéro de séquence du paquet : %d\n", pkt_get_seqnum(packet));
         printf("Données encodées dans le paquet : %s\n", pkt_get_payload(packet));
