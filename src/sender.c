@@ -183,6 +183,12 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
+        uint8_t ** buffer_envoi = (uint8_t **)malloc(1024*sizeof(uint8_t));
+        if (buffer_encode == NULL){
+          fprintf(stderr, "Erreur malloc : buffer_envoi\n");
+          return -1;
+        }
+
         size_t len_buffer_encode = sizeof(buffer_encode);
 
         // Encodage du paquet a envoyer sur le reseau
@@ -193,6 +199,8 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
+
+        ajout_buffer((uint8_t *)buffer_encode, buffer_envoi);
 
         // Envoi du packet sur le reseau
         bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
