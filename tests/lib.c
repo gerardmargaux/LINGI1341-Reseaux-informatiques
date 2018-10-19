@@ -779,3 +779,19 @@ int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window){
 	// Si le numero de sequence se trouve dans la fenetre
 	return 0;
 }
+
+
+/*
+ * Vérification du nombre d'arguments
+ */
+int arg_check(int argc, int n_min, int n_max){
+	if(argc < n_min){
+		fprintf(stderr, "Pas assez d'arguments.\n");
+		return -1;
+	}
+	else if(argc > n_max){
+		fprintf(stderr, "Trop d'arguments.\n");
+		return -1;
+	}
+	return 0;
+}

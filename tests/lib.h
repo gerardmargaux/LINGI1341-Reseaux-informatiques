@@ -216,4 +216,11 @@ int seqnum_inc(int* seqnum);
 int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window);
 
 
+/*
+ * Vérifie le nombre d'arguments
+ */
+int arg_check(int argc, int n_min, int n_max);
+
+
+
 #endif

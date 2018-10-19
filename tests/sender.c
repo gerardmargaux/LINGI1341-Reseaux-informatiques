@@ -39,18 +39,15 @@
 */
 int main(int argc, char *argv[]) {
 
-  // Vérification du nombre d'arguments
-  if(argc < 3){
-    fprintf(stderr, "Pas assez d'arguments.\n");
-    return -1;
-  }
-  else if(argc > 5){
-    fprintf(stderr, "Trop d'arguments.\n");
-    return -1;
-  }
-
-
   int err; // Variable pour error check
+
+  // Vérification du nombre d'arguments
+  err = arg_check(argc, 3, 5);
+  if(err == -1){
+    return -1;
+  }
+
+
   int fd = STDIN; // File descriptor avec lequel on va lire les données
   int bytes_read; // Nombre de bytes lus sur l'entrée standard / le fichier source
   int bytes_sent; // Nombre de bytes envoyés au receiver
@@ -101,7 +98,6 @@ int main(int argc, char *argv[]) {
   err = getaddrinfo(hostname, port, &hints, &servinfo);
   if(err != 0){
     perror("Erreur getaddrinfo");
-    close(fd);
     return -1;
   }
 
@@ -109,13 +105,8 @@ int main(int argc, char *argv[]) {
   if(sockfd == -1){
     perror("Erreur socket");
     freeaddrinfo(servinfo);
-    close(fd);
     return -1;
   }
-
-
-  freeaddrinfo(servinfo);
-
 
   pkt_t* packet = pkt_new();
   pkt_t* ack_received = pkt_ack_new();
@@ -263,6 +254,7 @@ int main(int argc, char *argv[]) {
   pkt_del(packet);
   pkt_del(ack_received);
 
+  freeaddrinfo(servinfo);
   close(sockfd);
   if(fd != 0){
     close(fd);
