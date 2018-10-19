@@ -245,6 +245,7 @@ int main(int argc, char *argv[]) {
       }
       else {
         // Ajout du buffer au buffer de reception
+        if(buffer_plein(buffer_recept) == 0){
         ajout_buffer((uint8_t *)buffer, buffer_recept);
         pkt_t * packet_ack = pkt_new();
 
@@ -300,6 +301,7 @@ int main(int argc, char *argv[]) {
         }
         printf("Fin de l'envoi du packet\n");
         free(buffer_encode);
+      }
       }
     }
     }

@@ -52,6 +52,21 @@ pkt_t* pkt_new()
   return new;
 }
 
+pkt_t* pkt_ack_new(){
+	pkt_t * new = (pkt_t *) malloc(sizeof(pkt_t));
+  if (new == NULL){
+    fprintf(stderr, "Erreur du malloc");
+    return NULL;
+  }
+  new->window = 0; // Par definition, on fait commencer la fenetre à 1
+  new->tr = 0;
+  new->type = PTYPE_ACK;
+  new->seqnum = 0;
+  new->length = 0;
+  new->timestamp = 0;
+  new->crc1 = 0;
+	return new;
+}
 
 /* Libere le pointeur vers la struct pkt, ainsi que toutes les
  * ressources associees*/
@@ -877,4 +892,24 @@ uint8_t ** ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept){
 	 }
 	 min_window = seqnum;
 	 return 0;
+ }
+
+
+ /*
+  * Vérification du nombre d'arguments entres en ligne de commande
+	*
+	* @return : 0 si les arguments sont valides
+	*						-1 en cas d'erreur
+	*
+  */
+ int arg_check(int argc, int n_min, int n_max){
+ 	if(argc < n_min){
+ 		fprintf(stderr, "Pas assez d'arguments.\n");
+ 		return -1;
+ 	}
+ 	else if(argc > n_max){
+ 		fprintf(stderr, "Trop d'arguments.\n");
+ 		return -1;
+ 	}
+ 	return 0;
  }

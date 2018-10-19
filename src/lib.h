@@ -52,9 +52,13 @@ typedef enum {
 
 // Fonctions utiles pour le projet
 
-/* Alloue et initialise une struct pkt
+/* Alloue et initialise une struct pkt de type data
  * @return: NULL en cas d'erreur */
 pkt_t* pkt_new();
+
+/* Alloue et initialise une struct pkt de type ack
+ * @return: NULL en cas d'erreur */
+pkt_t* pkt_ack_new();
 
 /* Libere le pointeur vers la struct pkt, ainsi que toutes les
  * ressources associees
@@ -245,5 +249,22 @@ int buffer_plein(uint8_t ** buffer);
  * 					 1 si l'element n'a pas ete retire correctement
  */
  int retire_buffer(uint8_t ** buffer, uint8_t seqnum);
+
+ /*
+  * Ajoute un buffer dans le buffer d'envoi ou de reception
+  *
+  * @return : - le buffer d'envoi ou de reception modifié
+  *
+  */
+ uint8_t ** ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept);
+
+ /*
+  * Vérification du nombre d'arguments entres en ligne de commande
+	*
+	* @return : 0 si les arguments sont valides
+	*						-1 en cas d'erreur
+	*
+  */
+ int arg_check(int argc, int n_min, int n_max);
 
 #endif
