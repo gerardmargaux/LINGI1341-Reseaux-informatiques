@@ -276,6 +276,16 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
+        // Retrait du buffer encode du buffer de reception 
+        int err_retire_buffer = retire_buffer(&buffer_encode, pkt_get_seqnum(packet_ack));
+        if (err_retire_buffer == -1){
+          fprintf(stderr, "Erreur retire buffer\n");
+          pkt_del(packet_ack);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+
         pkt_del(packet_ack);
 
         // Envoi du packet sur le reseau

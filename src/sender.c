@@ -247,6 +247,7 @@ int main(int argc, char *argv[]) {
 
         printf("Reçu ACK pour paquet %d\n", pkt_get_seqnum(ack_received));
 
+        // Retrait du buffer decode du buffer d'envoi
         int err_retire_buffer = retire_buffer(&ack_buffer, pkt_get_seqnum(ack_received));
         if (err_retire_buffer == -1){
           fprintf(stderr, "Erreur retire buffer\n");
