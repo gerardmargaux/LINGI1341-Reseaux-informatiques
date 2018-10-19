@@ -750,6 +750,7 @@ int seqnum_inc(int* seqnum){
 	}
 }
 
+
 /*
  * Vérifie si le numéro de séquence est dans la fenetre
  *
@@ -779,6 +780,82 @@ int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window){
 	// Si le numero de sequence se trouve dans la fenetre
 	return 0;
 }
+
+
+/*
+ * Ajoute un buffer dans le buffer d'envoi ou de reception
+ *
+ * @return : - le buffer d'envoi ou de reception modifié
+ *
+ */
+ int ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept){
+	int i = 0;
+	while(i < MAX_WINDOW_SIZE){
+		if (*(buffer_recept+i) == NULL){
+	    *(buffer_recept+i) = buffer;
+			return 0;
+	  }
+		else {
+			i++;
+		}
+	}
+	return 0;
+}
+
+
+/*
+ * Retire un element dans le buffer d'envoi ou de reception
+ *
+ * @return : 0 si l'element a ete correctement retire du buffer
+ * 					 1 si l'element n'a pas ete retire correctement
+ */
+ int retire_buffer(uint8_t ** buffer, uint8_t seqnum){
+	 uint8_t compare;
+
+	 for(int i = 0; i < MAX_WINDOW_SIZE; i++){
+		 printf("Test 1\n");
+		 memcpy(&compare, (*(buffer+i))+1, 1);
+		 if (compare == seqnum){
+			 buffer[i] = NULL;
+			 return 0;
+		 }
+	 }
+	 return 1;
+ }
+
+
+ /*
+  * Verifie si le buffer est plein ou pas
+  *
+  * @return : 1 si le buffer est plein
+	*  					0 si il reste au moins une place dans le buffer
+  */
+ int buffer_plein(uint8_t ** buffer){
+	 for(size_t i = 0; i<sizeof(buffer); i++){
+		 if (buffer[i] == NULL){
+			 return 0;
+		 }
+	 }
+	 return 1;
+ }
+
+
+ /*
+  * Decale la fenetre de reception ou d'envoi
+  *
+  * @return : 1 si la fenetre n'a pas ete decalee correctement
+  *  					0 si la fenetre a ete deplacee correctement
+  */
+ int decale_window(uint8_t len_window, uint8_t min_window, uint8_t seqnum){
+	 if (len_window > MAX_WINDOW_SIZE){
+		 return 1;
+	 }
+	 if (seqnum > 255){
+		 return 1;
+	 }
+	 min_window = seqnum;
+	 return 0;
+ }
 
 
 /*

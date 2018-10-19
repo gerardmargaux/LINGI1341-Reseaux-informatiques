@@ -26,11 +26,12 @@
 
 int main(int argc, char const *argv[]) {
 
+  uint8_t seqnum = 142;
   const char *data = argv[1];
   pkt_status_code err_code;
   pkt_t *packet = pkt_new();
   printf("Paquet créé\n");
-  err_code = pkt_set_seqnum(packet, 142);
+  err_code = pkt_set_seqnum(packet, seqnum);
   printf("Seqnum set\n");
   if(err_code != PKT_OK){
     pkt_del(packet);
@@ -63,26 +64,34 @@ int main(int argc, char const *argv[]) {
 
   printf("Encode OK\n");
 
-  pkt_t *packet2 = pkt_new();
+  uint8_t compare;
+  memcpy(&compare, buf+1, 1);
+  printf("Compare : %u\n", compare);
+  if(compare == seqnum){
+    printf("Compare = seqnum\n");
+  }
 
-  err_code = pkt_decode(buf, len, packet2);
-  if(err_code != PKT_OK){
+  uint8_t** big_buffer = (uint8_t**) malloc(MAX_WINDOW_SIZE*sizeof(uint8_t*));
+
+  printf("Premiere place du big buffer : %s\n", *big_buffer);
+
+  int err = ajout_buffer(buf, big_buffer);
+  if(err != 0){
+    fprintf(stderr, "Erreur ajout_buffer\n");
     pkt_del(packet);
-    fprintf(stderr, "Erreur decode\n");
+    free(buf);
     return -1;
   }
 
-  printf("Decode OK\n");
+  printf("Premiere place du big buffer : %s\n", (char*) *big_buffer);
 
-  printf("Type du paquet : %u\n", pkt_get_type(packet2));
-  printf("Tr du paquet : %u\n", pkt_get_tr(packet2));
-  printf("Window du paquet : %u\n", pkt_get_window(packet2));
-  printf("Seqnum du paquet : %u\n", pkt_get_seqnum(packet2));
-  printf("Length du paquet : %u\n", pkt_get_length(packet2));
-  printf("Timestamp du paquet : %u\n", pkt_get_timestamp(packet2));
-  printf("CRC1 du paquet : %u\n", pkt_get_crc1(packet2));
-  printf("Payload du paquet : %s\n", pkt_get_payload(packet2));
-  printf("CRC2 du paquet : %u\n", pkt_get_crc2(packet2));
+  err = retire_buffer(big_buffer, seqnum);
+
+  printf("Premiere place du big buffer : %s\n", (char*) *big_buffer);
+
+
+
+
 
   pkt_del(packet);
   free(buf);
