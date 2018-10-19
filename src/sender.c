@@ -204,18 +204,32 @@ int main(int argc, char *argv[]) {
 
         // Envoi du packet sur le reseau
         bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
+        if (bytes_sent == -1){
+          pkt_del(packet);
+          free(buffer_encode);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
         printf("Fin de l'envoi du packet\n");
         free(buffer_encode);
 
         printf("Numéro de séquence du paquet : %d\n", pkt_get_seqnum(packet));
         printf("Données encodées dans le paquet : %s\n", pkt_get_payload(packet));
 
-        /*
-        bytes_sent = sendto(sockfd, payload_buf, strlen(payload_buf)+1, 0,
-                            servinfo->ai_addr, servinfo->ai_addrlen);
-        printf("Nombre de bytes envoyés : %d\n", bytes_sent);
-        printf("Chaine envoyée : %s\n", payload_buf);
-        */
+        // Attente de reception du ack
+        uint8_t * buffer_attente = (uint8_t *)malloc(MAX_PAYLOAD_SIZE*sizeof(uint8_t));
+        if (buffer_encode == NULL){
+          fprintf(stderr, "Erreur malloc : buffer_attente\n");
+          return -1;
+        }
+        int bytes_received = recvfrom(sockfd, buffer_attente, sizeof(buffer_attente), 0,(struct sockaddr *) &sender_addr, (socklen_t *) &addr_len);
+        if (bytes_received == -1){
+          free(buffer_attente);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
 
         pkt_del(packet);
       }

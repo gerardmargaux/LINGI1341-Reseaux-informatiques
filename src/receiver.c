@@ -133,6 +133,12 @@ int main(int argc, char *argv[]) {
     int addr_len;
     char buffer[MAX_PAYLOAD_SIZE];
     bytes_received = recvfrom(sockfd, buffer, MAX_PAYLOAD_SIZE, 0,(struct sockaddr *) &sender_addr, (socklen_t *) &addr_len);
+    if (bytes_received == -1){
+      free(buffer);
+      close(sockfd);
+      close(fd);
+      return -1;
+    }
     if(strcmp(buffer, "STOP") == 0){
       printf("Fin de la réception de données\n");
       break;
@@ -204,6 +210,13 @@ int main(int argc, char *argv[]) {
         }
 
         bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
+        if (bytes_sent == -1){
+          pkt_del(packet_nack);
+          free(buffer_encode);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
       }
 
       else { // Si le paquet recu n'est pas tronque
@@ -278,6 +291,13 @@ int main(int argc, char *argv[]) {
 
         // Envoi du packet sur le reseau
         bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
+        if (bytes_sent == -1){
+          pkt_del(packet_ack);
+          free(buffer_encode);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
         printf("Fin de l'envoi du packet\n");
         free(buffer_encode);
       }
