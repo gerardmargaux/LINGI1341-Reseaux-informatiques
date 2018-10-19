@@ -217,7 +217,7 @@ int main(int argc, char *argv[]) {
         printf("Numéro de séquence du paquet : %d\n", pkt_get_seqnum(packet));
         printf("Données encodées dans le paquet : %s\n", pkt_get_payload(packet));
 
-        // Attente de reception du ack
+        /* Attente de reception du ack
         uint8_t * buffer_attente = (uint8_t *)malloc(MAX_PAYLOAD_SIZE*sizeof(uint8_t));
         if (buffer_encode == NULL){
           fprintf(stderr, "Erreur malloc : buffer_attente\n");
@@ -230,6 +230,7 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
+        */
 
         pkt_del(packet);
       }

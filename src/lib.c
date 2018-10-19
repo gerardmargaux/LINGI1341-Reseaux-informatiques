@@ -822,6 +822,7 @@ uint8_t ** ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept){
 	else {
 		(*buffer_recept++) = buffer;
 	}
+	return buffer_recept;
 }
 
 
@@ -834,10 +835,10 @@ uint8_t ** ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept){
  int retire_buffer(uint8_t ** buffer, uint8_t seqnum){
 	 uint8_t compare;
 
-	 for(int i = 0; i<strlen(buffer); i++){
+	 for(size_t i = 0; i<sizeof(buffer); i++){
 		 memcpy(&compare, (*(buffer+i))+1, 1);
 		 if (compare == seqnum){
-			 (buffer[i] == NULL);
+			 buffer[i] = NULL;
 			 return 0;
 		 }
 	 }
@@ -852,8 +853,8 @@ uint8_t ** ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept){
 	*  					0 si il reste au moins une place dans le buffer
   */
  int buffer_plein(uint8_t ** buffer){
-	 for(int i = 0; i<strlen(*buffer); i++){
-		 if (*buffer[i] == NULL){
+	 for(size_t i = 0; i<sizeof(buffer); i++){
+		 if (buffer[i] == NULL){
 			 return 0;
 		 }
 	 }
@@ -868,5 +869,12 @@ uint8_t ** ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept){
   *  					0 si la fenetre a ete deplacee correctement
   */
  int decale_window(uint8_t len_window, uint8_t min_window, uint8_t seqnum){
+	 if (len_window > MAX_WINDOW_SIZE){
+		 return 1;
+	 }
+	 if (seqnum > 255){
+		 return 1;
+	 }
 	 min_window = seqnum;
+	 return 0;
  }
