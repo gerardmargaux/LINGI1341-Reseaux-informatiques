@@ -257,7 +257,7 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
-        uint8_t begin_window = 5;
+        uint8_t begin_window = 0;
 
         // Decalage de la fenetre d'envoi
         int err_decale_window = decale_window(window, &begin_window, pkt_get_seqnum(ack_received));

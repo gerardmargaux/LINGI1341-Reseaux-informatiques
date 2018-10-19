@@ -759,25 +759,43 @@ int seqnum_inc(int* seqnum){
  *					 1 si une erreur d'argument
  *
  */
-int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window){
+ int in_window (uint8_t seqnum, uint8_t min_window, uint8_t len_window){
 
+ 	if (seqnum > 255){
+ 		printf("Le numero de sequence n'est pas valide\n");
+ 		return 1;
+ 	}
+
+ 	if (len_window > MAX_WINDOW_SIZE){
+ 		printf("La fenetre a une taille trop grande\n");
+ 		return 1;
+ 	}
+
+ 	// Si le numero de sequence ne se trouve pas dans la fenetre
+ 	if ((seqnum > (len_window + min_window)) || (seqnum < min_window)){
+ 		printf("Le numero de sequence est hors de la fenetre\n");
+ 		return -1;
+ 	}
+
+ 	// Si le numero de sequence se trouve dans la fenetre
+ 	return 0;
+ }
+
+
+/*
+ * Decale la fenetre de reception ou d'envoi
+ *
+ * @return : 1 si la fenetre n'a pas ete decalee correctement
+ *  					0 si la fenetre a ete deplacee correctement
+ */
+int decale_window(uint8_t len_window, uint8_t * min_window, uint8_t seqnum){
+	if (len_window > MAX_WINDOW_SIZE){
+		return 1;
+	}
 	if (seqnum > 255){
-		printf("Le numero de sequence n'est pas valide\n");
 		return 1;
 	}
-
-	if ((max_window - min_window) > MAX_WINDOW_SIZE){
-		printf("La fenetre a une taille trop grande\n");
-		return 1;
-	}
-
-	// Si le numero de sequence ne se trouve pas dans la fenetre
-	if ((seqnum > max_window) || (seqnum < min_window)){
-		printf("Le numero de sequence est hors de la fenetre\n");
-		return -1;
-	}
-
-	// Si le numero de sequence se trouve dans la fenetre
+	*min_window = seqnum+1;
 	return 0;
 }
 
@@ -811,8 +829,9 @@ int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window){
  */
  int retire_buffer(uint8_t ** buffer, uint8_t seqnum){
 	 uint8_t compare;
-
+	 printf("Test 1\n");
 	 for(int i = 0; i < MAX_WINDOW_SIZE; i++){
+		 printf("Boucle\n");
 		 memcpy(&compare, (*(buffer+i))+1, 1);
 		 if (compare == seqnum){
 			 buffer[i] = NULL;
@@ -830,30 +849,12 @@ int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window){
 	*  					0 si il reste au moins une place dans le buffer
   */
  int buffer_plein(uint8_t ** buffer){
-	 for(size_t i = 0; i<sizeof(buffer); i++){
+	 for(size_t i = 0; i < LENGTH_BUF_REC; i++){
 		 if (buffer[i] == NULL){
 			 return 0;
 		 }
 	 }
 	 return 1;
- }
-
-
- /*
-  * Decale la fenetre de reception ou d'envoi
-  *
-  * @return : 1 si la fenetre n'a pas ete decalee correctement
-  *  					0 si la fenetre a ete deplacee correctement
-  */
- int decale_window(uint8_t len_window, uint8_t * min_window, uint8_t seqnum){
-	 if (len_window > MAX_WINDOW_SIZE){
-		 return 1;
-	 }
-	 if (seqnum > 255){
-		 return 1;
-	 }
-	 *min_window = seqnum;
-	 return 0;
  }
 
 

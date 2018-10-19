@@ -29,11 +29,6 @@
 #include <errno.h>
 #include <fcntl.h>
 
-#define STDIN 0
-#define STDOUT 1
-#define STDERR 2
-
-
 /*
  * main : Fonction principale
  *
@@ -54,7 +49,7 @@ int main(int argc, char *argv[]) {
   //int bytes_written; // Nombre de bytes écrits à chaque itération
   int bytes_sent; // Nombre de bytes renvoyes au sender (ack)
 
-  uint8_t ** buffer_recept = (uint8_t **)malloc(528*sizeof(uint8_t)); // Buffer de buffer de reception des paquets
+  uint8_t ** buffer_recept = (uint8_t **)malloc(LENGTH_BUF_REC*sizeof(uint8_t*)); // Buffer de buffer de reception des paquets
   if (buffer_recept == NULL){
     fprintf(stderr, "Erreur malloc : buffer_recept\n");
     return -1;
@@ -121,6 +116,8 @@ int main(int argc, char *argv[]) {
   }
 
   freeaddrinfo(servinfo);
+  uint8_t window = 3;
+  uint8_t min_window = 0;
 
   while(bytes_received > 0){
 
@@ -212,12 +209,14 @@ int main(int argc, char *argv[]) {
 
 
         uint8_t seqnum = pkt_get_seqnum(new_packet);
-        uint8_t window = 3;
-        uint8_t min_window = 0;
         pkt_t * packet_ack = pkt_ack_new();
 
+        printf("Seqnum : %u\n", seqnum);
+        printf("Min Window : %u\n", min_window);
+        printf("Taille window : %u\n", window);
         // Teste si le numero de sequence est dans la fenetre
         int val = in_window(seqnum, min_window, window);
+        printf("val : %d\n", val);
         if (val == -1 || val == 1){
           pkt_del(new_packet);
           close(sockfd);
@@ -227,15 +226,15 @@ int main(int argc, char *argv[]) {
         else {
           // Ajout du buffer au buffer de reception
           if(buffer_plein(buffer_recept) == 0){
-          ajout_buffer(data_received, buffer_recept);
+            ajout_buffer(data_received, buffer_recept);
 
-          err_code = pkt_set_seqnum(packet_ack, seqnum);
-          if (err_code != PKT_OK){
-            pkt_del(packet_ack);
-            close(sockfd);
-            close(fd);
-            return -1;
-          }
+            err_code = pkt_set_seqnum(packet_ack, seqnum);
+            if (err_code != PKT_OK){
+              pkt_del(packet_ack);
+              close(sockfd);
+              close(fd);
+              return -1;
+            }
 
           err_code = pkt_set_window(packet_ack, window);
           if (err_code != PKT_OK){
@@ -243,7 +242,7 @@ int main(int argc, char *argv[]) {
             close(sockfd);
             close(fd);
             return -1;
-        }
+          }
 
         uint8_t * buffer_encode = (uint8_t *)malloc(16*sizeof(uint8_t));
         if (buffer_encode == NULL){
@@ -274,18 +273,17 @@ int main(int argc, char *argv[]) {
         }
 
         // Retrait du buffer encode du buffer de reception
-        int err_retire_buffer = retire_buffer(&buffer_encode, pkt_get_seqnum(packet_ack));
+        int err_retire_buffer = retire_buffer(buffer_recept, pkt_get_seqnum(packet_ack));
         if (err_retire_buffer == -1){
           fprintf(stderr, "Erreur retire buffer\n");
           close(sockfd);
           close(fd);
           return -1;
         }
-
-        uint8_t begin_window = 5;
+        printf("Paquet avec seqnum %u retiré du buffer\n", pkt_get_seqnum(packet_ack));
 
         // Decalage de la fenetre de reception
-        int err_decale_window = decale_window(window, begin_window, pkt_get_seqnum(packet_ack));
+        int err_decale_window = decale_window(window, &min_window, pkt_get_seqnum(packet_ack));
         if (err_decale_window == -1){
           fprintf(stderr, "Erreur decale_window\n");
           pkt_del(packet_ack);
@@ -294,9 +292,17 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
+        for(int i = min_window; i < (min_window + window); i++){
+          printf("Window : %u\n", i);
+        }
+
         printf("Fin de l'envoi du ack\n");
         free(buffer_encode);
-        printf("Test\n");
+      }
+
+      else{ // Le buffer est plein
+        printf("Le buffer est plein :/\n");
+        break;
       }
     }
   }
@@ -309,4 +315,5 @@ int main(int argc, char *argv[]) {
     close(fd);
   }
   return 0;
+
 }

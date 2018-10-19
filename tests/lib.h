@@ -35,6 +35,12 @@ typedef enum {
 /* Taille maximale de Window */
 #define MAX_WINDOW_SIZE 31
 
+#define LENGTH_BUF_REC 31
+
+#define STDIN 0
+#define STDOUT 1
+#define STDERR 2
+
 /* Valeur de retours des fonctions */
 typedef enum {
 	PKT_OK = 0,     /* Le paquet a ete traite avec succes */
@@ -213,7 +219,7 @@ int seqnum_inc(int* seqnum);
  *					 -1 si il est hors de la fenetre. Le paquet recu est discardé
  *
  */
-int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window);
+int in_window (uint8_t seqnum, uint8_t min_window, uint8_t len_window);
 
 
 /*

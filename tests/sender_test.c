@@ -240,9 +240,6 @@ int main(int argc, char *argv[]) {
         printf("Test 4\n");
 
         err_code = pkt_decode(ack_buffer, 16, ack_received);
-
-        printf("Test 5\n");
-
         free(ack_buffer);
         if(err_code != PKT_OK){
           fprintf(stderr, "Erreur decode\n");
@@ -252,8 +249,11 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
+        printf("Test 5\n");
+        printf("Seqnum : %u\n", pkt_get_seqnum(ack_received));
+
         // Retrait du buffer decode du buffer d'envoi
-        int err_retire_buffer = retire_buffer(&ack_buffer, pkt_get_seqnum(ack_received));
+        int err_retire_buffer = retire_buffer(buffer_envoi, pkt_get_seqnum(ack_received));
         if (err_retire_buffer == -1){
           fprintf(stderr, "Erreur retire buffer\n");
           pkt_del(ack_received);
@@ -261,6 +261,8 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
+
+        printf("Test 6\n");
 
         uint8_t begin_window = 5;
 
@@ -278,8 +280,6 @@ int main(int argc, char *argv[]) {
 
         free(ack_buffer);
         memset(ack_received, 0, 12);
-
-        printf("Test 6\n");
 
       }
     }
