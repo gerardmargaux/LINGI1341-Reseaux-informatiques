@@ -276,11 +276,21 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
+        pkt_del(packet_ack);
+
+        // Envoi du packet sur le reseau
+        bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
+        if (bytes_sent == -1){
+          free(buffer_encode);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+
         // Retrait du buffer encode du buffer de reception
         int err_retire_buffer = retire_buffer(&buffer_encode, pkt_get_seqnum(packet_ack));
         if (err_retire_buffer == -1){
           fprintf(stderr, "Erreur retire buffer\n");
-          pkt_del(packet_ack);
           close(sockfd);
           close(fd);
           return -1;
@@ -289,7 +299,7 @@ int main(int argc, char *argv[]) {
         uint8_t begin_window = 5;
 
         // Decalage de la fenetre de reception
-        int err_decale_window = decale_window(window, &begin_window, pkt_get_seqnum(packet_ack));
+        int err_decale_window = decale_window(window, begin_window, pkt_get_seqnum(packet_ack));
         if (err_decale_window == -1){
           fprintf(stderr, "Erreur decale_window\n");
           pkt_del(packet_ack);
@@ -298,17 +308,6 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
-        pkt_del(packet_ack);
-
-        // Envoi du packet sur le reseau
-        bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
-        if (bytes_sent == -1){
-          pkt_del(packet_ack);
-          free(buffer_encode);
-          close(sockfd);
-          close(fd);
-          return -1;
-        }
         printf("Fin de l'envoi du packet\n");
         free(buffer_encode);
       }

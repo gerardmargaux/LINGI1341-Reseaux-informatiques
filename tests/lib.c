@@ -845,14 +845,14 @@ int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window){
   * @return : 1 si la fenetre n'a pas ete decalee correctement
   *  					0 si la fenetre a ete deplacee correctement
   */
- int decale_window(uint8_t len_window, uint8_t min_window, uint8_t seqnum){
+ int decale_window(uint8_t len_window, uint8_t * min_window, uint8_t seqnum){
 	 if (len_window > MAX_WINDOW_SIZE){
 		 return 1;
 	 }
 	 if (seqnum > 255){
 		 return 1;
 	 }
-	 min_window = seqnum;
+	 *min_window = seqnum;
 	 return 0;
  }
 

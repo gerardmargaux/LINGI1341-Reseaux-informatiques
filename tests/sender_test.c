@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
   pkt_status_code err_code; // Variable pour error check avec les paquets
 
   int window = 4;
-  
+
   int seqnum = 0;
 
 
@@ -246,6 +246,28 @@ int main(int argc, char *argv[]) {
         free(ack_buffer);
         if(err_code != PKT_OK){
           fprintf(stderr, "Erreur decode\n");
+          pkt_del(ack_received);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+
+        // Retrait du buffer decode du buffer d'envoi
+        int err_retire_buffer = retire_buffer(&ack_buffer, pkt_get_seqnum(ack_received));
+        if (err_retire_buffer == -1){
+          fprintf(stderr, "Erreur retire buffer\n");
+          pkt_del(ack_received);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+
+        uint8_t begin_window = 5;
+
+        // Decalage de la fenetre d'envoi
+        int err_decale_window = decale_window(window, &begin_window, pkt_get_seqnum(ack_received));
+        if (err_decale_window == -1){
+          fprintf(stderr, "Erreur decale_window\n");
           pkt_del(ack_received);
           close(sockfd);
           close(fd);

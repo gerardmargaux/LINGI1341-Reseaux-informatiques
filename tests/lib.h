@@ -230,7 +230,7 @@ int ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept);
  * @return : 1 si la fenetre n'a pas ete decalee correctement
  *  					0 si la fenetre a ete deplacee correctement
  */
-int decale_window(uint8_t len_window, uint8_t min_window, uint8_t seqnum);
+int decale_window(uint8_t len_window, uint8_t * min_window, uint8_t seqnum);
 
 /*
  * Verifie si le buffer est plein ou pas
