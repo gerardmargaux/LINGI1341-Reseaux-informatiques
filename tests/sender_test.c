@@ -55,7 +55,8 @@ int main(int argc, char *argv[]) {
   pkt_status_code err_code; // Variable pour error check avec les paquets
 
   int window = 4;
-  int seqnum = 142;
+  
+  int seqnum = 0;
 
 
   // Prise en compte des arguments avec getopt()
@@ -108,8 +109,16 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
+
+
   pkt_t* packet = pkt_new();
   pkt_t* ack_received = pkt_ack_new();
+
+  uint8_t ** buffer_envoi = (uint8_t **) malloc(MAX_WINDOW_SIZE*sizeof(uint8_t*));
+  if (buffer_envoi == NULL){
+    fprintf(stderr, "Erreur malloc : buffer_envoi\n");
+    return -1;
+  }
 
   while(1){
 
@@ -190,14 +199,8 @@ int main(int argc, char *argv[]) {
         }
 
 
-        uint8_t ** buffer_envoi = (uint8_t **)malloc(1024*sizeof(uint8_t));
-        if (buffer_encode == NULL){
-          fprintf(stderr, "Erreur malloc : buffer_envoi\n");
-          return -1;
-        }
-
         // Ajout du buffer au buffer de reception
-        ajout_buffer((uint8_t *)buffer_encode, buffer_envoi);
+        err = ajout_buffer(buffer_encode, buffer_envoi);
 
 
         // Envoi du packet sur le reseau

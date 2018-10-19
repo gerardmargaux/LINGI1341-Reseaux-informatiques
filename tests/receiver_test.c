@@ -141,7 +141,6 @@ int main(int argc, char *argv[]) {
     pkt_t * new_packet = pkt_new();
 
     err_code = pkt_decode(data_received, len, new_packet);
-    free(data_received);
     if (err_code != PKT_OK){
       fprintf(stderr, "Erreur decode\n");
       pkt_del(new_packet);
@@ -214,7 +213,7 @@ int main(int argc, char *argv[]) {
 
         uint8_t seqnum = pkt_get_seqnum(new_packet);
         uint8_t window = 3;
-        uint8_t min_window = 5;
+        uint8_t min_window = 0;
         pkt_t * packet_ack = pkt_ack_new();
 
         // Teste si le numero de sequence est dans la fenetre
@@ -228,7 +227,7 @@ int main(int argc, char *argv[]) {
         else {
           // Ajout du buffer au buffer de reception
           if(buffer_plein(buffer_recept) == 0){
-          ajout_buffer((uint8_t *)buffer, buffer_recept);
+          ajout_buffer(data_received, buffer_recept);
 
           err_code = pkt_set_seqnum(packet_ack, seqnum);
           if (err_code != PKT_OK){
