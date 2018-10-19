@@ -40,23 +40,25 @@
  */
 int main(int argc, char *argv[]) {
 
-  // Vérification du nombre d'arguments
-  if(argc < 3){
-    fprintf(stderr, "Pas assez d'arguments.\n");
-    return -1;
-  }
-  else if(argc > 5){
-    fprintf(stderr, "Trop d'arguments.\n");
-    return -1;
-  }
-
-
   int err; // Variable pour error check
+
+  // Vérification du nombre d'arguments
+  err = arg_check(argc, 3, 5);
+  if(err == -1){
+    return -1;
+  }
+
   pkt_status_code err_code; // Variable pour error check avec les paquets
   int fd = STDOUT; // File descriptor avec lequel on va écrire les données
   int bytes_received = 1; // Nombre de bytes reçus du sender
   //int bytes_written; // Nombre de bytes écrits à chaque itération
   int bytes_sent; // Nombre de bytes renvoyes au sender (ack)
+
+  uint8_t ** buffer_recept = (uint8_t **)malloc(528*sizeof(uint8_t)); // Buffer de buffer de reception des paquets
+  if (buffer_recept == NULL){
+    fprintf(stderr, "Erreur malloc : buffer_recept\n");
+    return -1;
+  }
 
   // Prise en compte des arguments avec getopt()
   extern char* optarg;
@@ -180,7 +182,7 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
-        uint8_t * buffer_encode = (uint8_t *)malloc(1024*sizeof(uint8_t));
+        uint8_t * buffer_encode = (uint8_t *)malloc(528*sizeof(uint8_t));
         if (buffer_encode == NULL){
           fprintf(stderr, "Erreur malloc : buffer_encode\n");
           return -1;
@@ -198,6 +200,13 @@ int main(int argc, char *argv[]) {
         }
 
         bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, (struct sockaddr *) &sender_addr, addr_len);
+        if (bytes_sent == -1){
+          pkt_del(packet_nack);
+          free(buffer_encode);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
       }
 
       else { // Si le paquet recu n'est pas tronque
@@ -207,20 +216,33 @@ int main(int argc, char *argv[]) {
         uint8_t window = 3;
         pkt_t * packet_ack = pkt_ack_new();
 
-        err_code = pkt_set_seqnum(packet_ack, seqnum);
-        if (err_code != PKT_OK){
-          pkt_del(packet_ack);
+        // Teste si le numero de sequence est dans la fenetre
+        int val = in_window(seqnum, min_window, max_window);
+        if (val == -1 || val == 1){
+          pkt_del(new_packet);
           close(sockfd);
           close(fd);
           return -1;
         }
+        else {
+          // Ajout du buffer au buffer de reception
+          if(buffer_plein(buffer_recept) == 0){
+          ajout_buffer((uint8_t *)buffer, buffer_recept);
 
-        err_code = pkt_set_window(packet_ack, window);
-        if (err_code != PKT_OK){
-          pkt_del(packet_ack);
-          close(sockfd);
-          close(fd);
-          return -1;
+          err_code = pkt_set_seqnum(packet_ack, seqnum);
+          if (err_code != PKT_OK){
+            pkt_del(packet_ack);
+            close(sockfd);
+            close(fd);
+            return -1;
+          }
+
+          err_code = pkt_set_window(packet_ack, window);
+          if (err_code != PKT_OK){
+            pkt_del(packet_ack);
+            close(sockfd);
+            close(fd);
+            return -1;
         }
 
         uint8_t * buffer_encode = (uint8_t *)malloc(16*sizeof(uint8_t));
@@ -254,23 +276,12 @@ int main(int argc, char *argv[]) {
         free(buffer_encode);
         printf("Test\n");
       }
+    }
   }
+}
+}
 
-/*
 
-  // Attente d'un message du sender
-  int ret_wait = wait_for_client(sfd);
-  if (ret_wait < 0){
-    fprintf(stderr, "Erreur lors de l'attente d'un message\n");
-    return -1;
-  }
-
-  // Reception d'un paquet du sender
-  // Envoie d'un ACK
-
-  pkt_t * nouveau = pkt_new();
-  nouveau->type = 2;
-*/
 
   close(sockfd);
   if(fd != 1){

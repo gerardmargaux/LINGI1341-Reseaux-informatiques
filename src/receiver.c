@@ -40,25 +40,22 @@
  */
 int main(int argc, char *argv[]) {
 
-  // Vérification du nombre d'arguments
-  if(argc < 3){
-    fprintf(stderr, "Pas assez d'arguments.\n");
-    return -1;
-  }
-  else if(argc > 5){
-    fprintf(stderr, "Trop d'arguments.\n");
-    return -1;
-  }
-
-
   int err; // Variable pour error check
+
+  // Vérification du nombre d'arguments
+  err = arg_check(argc, 3, 5);
+  if(err == -1){
+    return -1;
+  }
+
   pkt_status_code err_code; // Variable pour error check
   int fd = STDOUT; // File descriptor avec lequel on va écrire les données
   int bytes_received = 1; // Nombre de bytes reçus du sender
   int bytes_written; // Nombre de bytes écrits à chaque itération
   //pkt_status_code err_code; // Variable pour error check avec les paquets
   int bytes_sent; // Nombre de bytes renvoyes au sender (ack)
-  uint8_t ** buffer_recept = (uint8_t **)malloc(1024*sizeof(uint8_t)); // Buffer de buffer de reception des paquets
+
+  uint8_t ** buffer_recept = (uint8_t **)malloc(528*sizeof(uint8_t)); // Buffer de buffer de reception des paquets
   if (buffer_recept == NULL){
     fprintf(stderr, "Erreur malloc : buffer_recept\n");
     return -1;
@@ -93,9 +90,6 @@ int main(int argc, char *argv[]) {
   printf("Port : %s\n", port);
 
   // Création du socket
-  struct sockaddr_in6 sender_addr, receiver_addr;
-  memset(&sender_addr, 0, sizeof(sender_addr));
-  memset(&receiver_addr, 0, sizeof(receiver_addr));
   int sockfd; // Variable qui va contenir le file descriptor du socket
   struct addrinfo hints, *servinfo;
   memset(&hints, 0, sizeof(hints));
@@ -130,30 +124,31 @@ int main(int argc, char *argv[]) {
   freeaddrinfo(servinfo);
 
   while(bytes_received > 0){
-    int addr_len;
-    char buffer[MAX_PAYLOAD_SIZE];
-    bytes_received = recvfrom(sockfd, buffer, MAX_PAYLOAD_SIZE, 0,(struct sockaddr *) &sender_addr, (socklen_t *) &addr_len);
-    if (bytes_received == -1){
-      free(buffer);
-      close(sockfd);
-      close(fd);
-      return -1;
-    }
-    if(strcmp(buffer, "STOP") == 0){
+
+    struct sockaddr_in6 sender_addr, receiver_addr;
+    socklen_t addr_len = sizeof(struct sockaddr);
+    memset(&sender_addr, 0, sizeof(sender_addr));
+    memset(&receiver_addr, 0, sizeof(receiver_addr));
+
+    uint8_t* data_received = (uint8_t*) malloc(528);
+    bytes_received = recvfrom(sockfd, data_received, 528, 0, (struct sockaddr *) &sender_addr, &addr_len);
+    if(strcmp((char*) data_received, "STOP") == 0){
       printf("Fin de la réception de données\n");
       break;
     }
     if(fd == STDOUT){
-      printf("Chaine reçue : %s\n", buffer);
+      printf("Chaine reçue : %s\n", data_received);
     }
     else{
 
       // Decodage du buffer recu sur le reseau
-      const size_t len = sizeof(buffer);
+      const size_t len = 528;
       pkt_t * new_packet = pkt_new();
 
-      err_code = pkt_decode((uint8_t *)buffer, len, new_packet);
+      err_code = pkt_decode(data_received, len, new_packet);
+      free(data_received);
       if (err_code != PKT_OK){
+        fprintf(stderr, "Erreur decode\n");
         pkt_del(new_packet);
         close(sockfd);
         close(fd);
@@ -192,7 +187,7 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
-        uint8_t * buffer_encode = (uint8_t *)malloc(1024*sizeof(uint8_t));
+        uint8_t * buffer_encode = (uint8_t *)malloc(528*sizeof(uint8_t));
         if (buffer_encode == NULL){
           fprintf(stderr, "Erreur malloc : buffer_encode\n");
           return -1;
@@ -222,7 +217,7 @@ int main(int argc, char *argv[]) {
       else { // Si le paquet recu n'est pas tronque
 
       // Ecriture du buffer recu dans un fichier ou sur la sortie standard
-      bytes_written = write(fd, buffer, strlen(buffer));
+      bytes_written = write(fd, data_received, strlen((char *)data_received));
       if(bytes_written < 0){
         perror("Erreur write");
         close(sockfd);
@@ -231,6 +226,7 @@ int main(int argc, char *argv[]) {
       }
 
       uint8_t seqnum = pkt_get_seqnum(new_packet);
+      pkt_t * packet_ack = pkt_ack_new();
       uint8_t window = 3;
       uint8_t min_window = 2;
       uint8_t max_window = 5;
@@ -246,18 +242,9 @@ int main(int argc, char *argv[]) {
       else {
         // Ajout du buffer au buffer de reception
         if(buffer_plein(buffer_recept) == 0){
-        ajout_buffer((uint8_t *)buffer, buffer_recept);
-        pkt_t * packet_ack = pkt_new();
+        ajout_buffer((uint8_t *)data_received, buffer_recept);
 
         err_code = pkt_set_seqnum(packet_ack, seqnum);
-        if (err_code != PKT_OK){
-          pkt_del(packet_ack);
-          close(sockfd);
-          close(fd);
-          return -1;
-        }
-
-        err_code = pkt_set_type(packet_ack, PTYPE_ACK);
         if (err_code != PKT_OK){
           pkt_del(packet_ack);
           close(sockfd);
@@ -279,7 +266,7 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
-        size_t len_buffer_encode = sizeof(buffer_encode);
+        size_t len_buffer_encode = 16;
 
         // Encodage du paquet a envoyer sur le reseau
         int return_code =  pkt_encode(packet_ack, buffer_encode, len_buffer_encode);
@@ -289,6 +276,8 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
+
+        pkt_del(packet_ack);
 
         // Envoi du packet sur le reseau
         bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
