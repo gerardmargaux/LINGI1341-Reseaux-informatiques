@@ -87,10 +87,6 @@ int main(int argc, char *argv[]) {
   printf("Port : %s\n", port);
 
   // Création du socket
-  struct sockaddr_in6 sender_addr, receiver_addr;
-  socklen_t addr_len = sizeof(struct sockaddr);
-  memset(&sender_addr, 0, sizeof(sender_addr));
-  memset(&receiver_addr, 0, sizeof(receiver_addr));
   int sockfd; // Variable qui va contenir le file descriptor du socket
   struct addrinfo hints, *servinfo;
   memset(&hints, 0, sizeof(hints));
@@ -125,6 +121,11 @@ int main(int argc, char *argv[]) {
   freeaddrinfo(servinfo);
 
   while(bytes_received > 0){
+
+    struct sockaddr_in6 sender_addr, receiver_addr;
+    socklen_t addr_len = sizeof(struct sockaddr);
+    memset(&sender_addr, 0, sizeof(sender_addr));
+    memset(&receiver_addr, 0, sizeof(receiver_addr));
 
     uint8_t* data_received = (uint8_t*) malloc(528);
     bytes_received = recvfrom(sockfd, data_received, 528, 0, (struct sockaddr *) &sender_addr, &addr_len);
@@ -196,7 +197,7 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
-        bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
+        bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, (struct sockaddr *) &sender_addr, addr_len);
       }
 
       else { // Si le paquet recu n'est pas tronque
@@ -242,7 +243,7 @@ int main(int argc, char *argv[]) {
         pkt_del(packet_ack);
 
         // Envoi du packet sur le reseau
-        bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
+        bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, (struct sockaddr *) &sender_addr, addr_len);
         if(bytes_sent < 0){
           perror("Erreur send ack");
           close(sockfd);

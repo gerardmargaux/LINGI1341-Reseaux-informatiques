@@ -60,11 +60,6 @@ int main(int argc, char *argv[]) {
   int window = 4;
   int seqnum = 142;
 
-  struct sockaddr_in6 receiver_addr;
-  memset(&receiver_addr, 0, sizeof(receiver_addr));
-  socklen_t addr_len = sizeof(struct sockaddr);
-
-
 
   // Prise en compte des arguments avec getopt()
   extern char* optarg;
@@ -122,6 +117,9 @@ int main(int argc, char *argv[]) {
   freeaddrinfo(servinfo);
 
 
+  pkt_t* packet = pkt_new();
+  pkt_t* ack_received = pkt_ack_new();
+
   while(1){
 
     char* payload_buf = (char*) malloc(MAX_PAYLOAD_SIZE*sizeof(char));
@@ -150,7 +148,6 @@ int main(int argc, char *argv[]) {
         printf("Chaine lue : %s\n", payload_buf);
 
 
-        pkt_t* packet = pkt_new();
         err_code = pkt_set_payload(packet, payload_buf, strlen(payload_buf));
         if(err_code != PKT_OK){
           pkt_del(packet);
@@ -213,14 +210,20 @@ int main(int argc, char *argv[]) {
           return -1;
         }
         printf("Fin de l'envoi du packet\n");
+
+        memset(packet, 0, 528);
+        pkt_set_type(packet, PTYPE_DATA);
         free(payload_buf);
-        pkt_del(packet);
 
 
+        struct sockaddr_in6 receiver_addr;
+        memset(&receiver_addr, 0, sizeof(receiver_addr));
+        socklen_t addr_len = sizeof(struct sockaddr);
 
         uint8_t* ack_buffer = (uint8_t*) malloc(16);
         printf("Test 1\n");
         bytes_received = recvfrom(sockfd, ack_buffer, 16, 0, (struct sockaddr *) &receiver_addr, &addr_len);
+        printf("Test 2\n");
         if(bytes_received < 0){
           perror("Erreur receive ACK");
           close(sockfd);
@@ -228,9 +231,14 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
-        pkt_t* ack_received = pkt_ack_new();
+        printf("Test 3\n");
+
+        printf("Test 4\n");
 
         err_code = pkt_decode(ack_buffer, 16, ack_received);
+
+        printf("Test 5\n");
+
         free(ack_buffer);
         if(err_code != PKT_OK){
           fprintf(stderr, "Erreur decode\n");
@@ -242,11 +250,18 @@ int main(int argc, char *argv[]) {
 
         printf("Reçu ACK pour paquet %d\n", pkt_get_seqnum(ack_received));
 
-        free(ack_received);
+        free(ack_buffer);
+        memset(ack_received, 0, 12);
+
+        printf("Test 6\n");
 
       }
     }
   }
+
+
+  pkt_del(packet);
+  pkt_del(ack_received);
 
   close(sockfd);
   if(fd != 0){

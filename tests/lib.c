@@ -73,7 +73,7 @@ pkt_t* pkt_ack_new(){
  * ressources associees*/
 void pkt_del(pkt_t *pkt)
 {
-		if(pkt_get_type(pkt) == PTYPE_DATA){
+	if(pkt_get_type(pkt) == PTYPE_DATA){
     	free(pkt->payload);
 		}
     free(pkt);
@@ -226,15 +226,18 @@ pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t len
  */
 pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 
-	if (len == 0){ // Le paquet est incoherent
-  	return E_UNCONSISTENT;
-  }
-  else if (len < 12){ // Il n'y a pas de header car il est encode sur 12 bytes
+	pkt_status_code err_code;
+
+	printf("Test decode 1\n");
+
+  if (len < 12){ // Il n'y a pas de header car il est encode sur 12 bytes
     return E_NOHEADER;
   }
 	else if(len > 528){ // Le paquet est trop long
 		return E_UNCONSISTENT;
 	}
+
+	printf("Test decode 2\n");
 
 	// Initialisation des variables
 	ptypes_t type;
@@ -244,7 +247,6 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 	uint16_t length;
 	uint32_t timestamp;
 	uint32_t crc1_recv;
-	uint32_t crc2_recv;
 
 	// Premier byte : type, tr, window
 	uint8_t first_byte;
@@ -296,13 +298,45 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 	}
 
 
-	char * payload = (char *) malloc(512*sizeof(char));
-	if(payload == NULL){
-		fprintf(stderr, "Erreur payload\n");
-		return E_NOMEM;
+	// Encodage des valeurs dans la structure pkt
+
+	err_code = pkt_set_type(pkt, type);
+	if(err_code != PKT_OK){
+		return E_TYPE;
 	}
 
+	err_code = pkt_set_tr(pkt, tr);
+	if(err_code != PKT_OK){
+		return E_TR;
+	}
+
+	err_code = pkt_set_window(pkt, window);
+	if(err_code != PKT_OK){
+		return E_WINDOW;
+	}
+
+	err_code = pkt_set_seqnum(pkt, seqnum);
+	if(err_code != PKT_OK){
+		return E_SEQNUM;
+	}
+
+	err_code = pkt_set_length(pkt, length);
+	if(err_code != PKT_OK){
+		return E_LENGTH;
+	}
+
+	err_code = pkt_set_timestamp(pkt, timestamp);
+
+	err_code = pkt_set_crc1(pkt, crc1_recv);
+
 	if(type == PTYPE_DATA){
+
+		uint32_t crc2_recv;
+		char * payload = (char *) malloc(512*sizeof(char));
+		if(payload == NULL){
+			fprintf(stderr, "Erreur payload\n");
+			return E_NOMEM;
+		}
 
 		// Payload
 		memcpy(payload, data+12, length);
@@ -318,52 +352,15 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 			return E_CRC;
 		}
 
+		err_code = pkt_set_payload(pkt, payload, length);
+		if(err_code != PKT_OK){
+			free(payload);
+			return E_LENGTH;
+		}
+
+		err_code = pkt_set_crc2(pkt, crc2_recv);
+
 	}
-
-	// Encodage des valeurs dans la structure pkt
-	pkt_status_code err_code;
-
-	err_code = pkt_set_type(pkt, type);
-	if(err_code != PKT_OK){
-		free(payload);
-		return E_TYPE;
-	}
-
-	err_code = pkt_set_tr(pkt, tr);
-	if(err_code != PKT_OK){
-		free(payload);
-		return E_TR;
-	}
-
-	err_code = pkt_set_window(pkt, window);
-	if(err_code != PKT_OK){
-		free(payload);
-		return E_WINDOW;
-	}
-
-	err_code = pkt_set_seqnum(pkt, seqnum);
-	if(err_code != PKT_OK){
-		free(payload);
-		return E_SEQNUM;
-	}
-
-	err_code = pkt_set_length(pkt, length);
-	if(err_code != PKT_OK){
-		free(payload);
-		return E_LENGTH;
-	}
-
-	err_code = pkt_set_timestamp(pkt, timestamp);
-
-	err_code = pkt_set_crc1(pkt, crc1_recv);
-
-	err_code = pkt_set_payload(pkt, payload, length);
-	if(err_code != PKT_OK){
-		free(payload);
-		return E_LENGTH;
-	}
-
-	err_code = pkt_set_crc2(pkt, crc2_recv);
 
 
 	return PKT_OK;
