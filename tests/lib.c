@@ -813,7 +813,6 @@ int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window){
 	 uint8_t compare;
 
 	 for(int i = 0; i < MAX_WINDOW_SIZE; i++){
-		 printf("Test 1\n");
 		 memcpy(&compare, (*(buffer+i))+1, 1);
 		 if (compare == seqnum){
 			 buffer[i] = NULL;

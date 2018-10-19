@@ -256,6 +256,23 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
+
+        uint8_t * begin_window = (uint8_t *)malloc(sizeof(uint8_t));
+        if (begin_window == NULL){
+          fprintf(stderr, "Erreur malloc : begin_window\n");
+          return -1;
+        }
+
+        // Decalage de la fenetre d'envoi
+        int err_decale_window = decale_window(window, begin_window, pkt_get_seqnum(ack_received));
+        if (err_retire_buffer == -1){
+          fprintf(stderr, "Erreur decale_window\n");
+          pkt_del(ack_received);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+
         free(ack_buffer);
         memset(ack_received, 0, 12);
 

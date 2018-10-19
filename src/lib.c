@@ -830,15 +830,19 @@ int in_window (uint8_t seqnum, uint8_t min_window, uint8_t len_window){
  * @return : - le buffer d'envoi ou de reception modifié
  *
  */
-uint8_t ** ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept){
-  if (buffer_recept == NULL){
-    *buffer_recept = buffer;
+ int ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept){
+  int i = 0;
+  while(i < MAX_WINDOW_SIZE){
+ 	 if (*(buffer_recept+i) == NULL){
+ 		 *(buffer_recept+i) = buffer;
+ 		 return 0;
+ 	 }
+ 	 else {
+ 		 i++;
+ 	 }
   }
-	else {
-		(*buffer_recept++) = buffer;
-	}
-	return buffer_recept;
-}
+  return 0;
+ }
 
 
 /*
@@ -850,7 +854,7 @@ uint8_t ** ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept){
  int retire_buffer(uint8_t ** buffer, uint8_t seqnum){
 	 uint8_t compare;
 
-	 for(size_t i = 0; i<sizeof(buffer); i++){
+	 for(size_t i = 0; i<MAX_WINDOW_SIZE; i++){
 		 memcpy(&compare, (*(buffer+i))+1, 1);
 		 if (compare == seqnum){
 			 buffer[i] = NULL;
@@ -880,17 +884,17 @@ uint8_t ** ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept){
  /*
   * Decale la fenetre de reception ou d'envoi
   *
-  * @return : 1 si la fenetre n'a pas ete decalee correctement
+  * @return : -1 si la fenetre n'a pas ete decalee correctement
   *  					0 si la fenetre a ete deplacee correctement
   */
- int decale_window(uint8_t len_window, uint8_t min_window, uint8_t seqnum){
+ int decale_window(uint8_t len_window, uint8_t * min_window, uint8_t seqnum){
 	 if (len_window > MAX_WINDOW_SIZE){
-		 return 1;
+		 return -1;
 	 }
 	 if (seqnum > 255){
-		 return 1;
+		 return -1;
 	 }
-	 min_window = seqnum;
+	 *min_window = seqnum;
 	 return 0;
  }
 

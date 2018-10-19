@@ -224,7 +224,7 @@ int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window);
  * @return : - le buffer d'envoi ou de reception modifié
  *
  */
-uint8_t ** ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept);
+int ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept);
 
 /*
  * Decale la fenetre de reception ou d'envoi
@@ -232,7 +232,7 @@ uint8_t ** ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept);
  * @return : 1 si la fenetre n'a pas ete decalee correctement
  *  					0 si la fenetre a ete deplacee correctement
  */
-int decale_window(uint8_t len_window, uint8_t min_window, uint8_t seqnum);
+int decale_window(uint8_t len_window, uint8_t * min_window, uint8_t seqnum);
 
 /*
  * Verifie si le buffer est plein ou pas
@@ -249,14 +249,6 @@ int buffer_plein(uint8_t ** buffer);
  * 					 1 si l'element n'a pas ete retire correctement
  */
  int retire_buffer(uint8_t ** buffer, uint8_t seqnum);
-
- /*
-  * Ajoute un buffer dans le buffer d'envoi ou de reception
-  *
-  * @return : - le buffer d'envoi ou de reception modifié
-  *
-  */
- uint8_t ** ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept);
 
  /*
   * Vérification du nombre d'arguments entres en ligne de commande
