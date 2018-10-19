@@ -1,4 +1,4 @@
-select: select.o
+select: clean select.o
 	@gcc -Wall -o select_test select.o
 
 select.o:
