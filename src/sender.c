@@ -194,14 +194,14 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
-        uint8_t ** buffer_envoi = (uint8_t **)malloc(1024*sizeof(uint8_t));
-        if (buffer_encode == NULL){
+        uint8_t ** buffer_envoi = (uint8_t **)malloc(MAX_WINDOW_SIZE*sizeof(uint8_t));
+        if (buffer_envoi == NULL){
           fprintf(stderr, "Erreur malloc : buffer_envoi\n");
           return -1;
         }
 
         // Ajout du buffer au buffer de reception
-        ajout_buffer((uint8_t *)buffer_encode, buffer_envoi);
+        ajout_buffer(buffer_encode, buffer_envoi);
 
         // Envoi du packet sur le reseau
         bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
@@ -247,6 +247,14 @@ int main(int argc, char *argv[]) {
 
         printf("Reçu ACK pour paquet %d\n", pkt_get_seqnum(ack_received));
 
+        int err_retire_buffer = retire_buffer(&ack_buffer, pkt_get_seqnum(ack_received));
+        if (err_retire_buffer == -1){
+          fprintf(stderr, "Erreur retire buffer\n");
+          pkt_del(ack_received);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
         free(ack_buffer);
         memset(ack_received, 0, 12);
 
