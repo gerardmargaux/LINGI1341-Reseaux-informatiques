@@ -229,10 +229,9 @@ int main(int argc, char *argv[]) {
       pkt_t * packet_ack = pkt_ack_new();
       uint8_t window = 3;
       uint8_t min_window = 2;
-      uint8_t max_window = 5;
 
       // Teste si le numero de sequence est dans la fenetre
-      int val = in_window(seqnum, min_window, max_window);
+      int val = in_window(seqnum, min_window, window);
       if (val == -1 || val == 1){
         pkt_del(new_packet);
         close(sockfd);

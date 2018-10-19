@@ -1,16 +1,16 @@
-main: clean lib sender receiver
+main: clean lib sender_test receiver_test
 
-sender: sender.o
-	@gcc -Wall -o $@ sender.o lib.a -lz
+sender_test: sender_test.o
+	@gcc -Wall -o $@ sender_test.o lib.a -lz
 
-sender.o:
-	@gcc -Wall -o sender.o -c sender.c -lz
+sender_test.o:
+	@gcc -Wall -o sender_test.o -c sender_test.c -lz
 
-receiver: receiver.o
-	@gcc -Wall -o $@ receiver.o lib.a -lz
+receiver_test: receiver_test.o
+	@gcc -Wall -o $@ receiver_test.o lib.a -lz
 
-receiver.o:
-	@gcc -Wall -o receiver.o -c receiver.c -lz
+receiver_test.o:
+	@gcc -Wall -o receiver_test.o -c receiver_test.c -lz
 
 lib: lib.o
 	@ar r lib.a lib.o
@@ -27,5 +27,4 @@ test.o:
 .PHONY: clean tests
 
 clean:
-	@rm -f *.o *.a sender receiver test && clear
-
+	@rm -f *.o *.a sender_test receiver_test test && clear
