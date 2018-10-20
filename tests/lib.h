@@ -184,12 +184,6 @@ int create_socket(struct sockaddr_in6 *source_addr,
                   struct sockaddr_in6 *dest_addr,
                   int dst_port);
 
-/* Loop reading a socket and printing to stdout,
- * while reading stdin and writing to the socket
- * @sfd: The socket file descriptor. It is both bound and connected.
- * @return: as soon as stdin signals EOF
- */
-void read_write_loop(const int sfd);
 
 /* Block the caller until a message is received on sfd,
  * and connect the socket to the source addresse of the received message.
@@ -219,7 +213,16 @@ int seqnum_inc(int* seqnum);
  *					 -1 si il est hors de la fenetre. Le paquet recu est discardé
  *
  */
-int in_window (uint8_t seqnum, uint8_t min_window, uint8_t len_window);
+int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window);
+
+
+/*
+ * Decale la fenetre de reception ou d'envoi
+ *
+ * @return : 1 si la fenetre n'a pas ete decalee correctement
+ *  					0 si la fenetre a ete deplacee correctement
+ */
+void decale_window(uint8_t *min_window, uint8_t *max_window);
 
 
 /*
@@ -228,15 +231,8 @@ int in_window (uint8_t seqnum, uint8_t min_window, uint8_t len_window);
  * @return : - le buffer d'envoi ou de reception modifié
  *
  */
-int ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept);
+int ajout_buffer (pkt_t* pkt, pkt_t** buffer_recept);
 
-/*
- * Decale la fenetre de reception ou d'envoi
- *
- * @return : 1 si la fenetre n'a pas ete decalee correctement
- *  					0 si la fenetre a ete deplacee correctement
- */
-int decale_window(uint8_t len_window, uint8_t * min_window, uint8_t seqnum);
 
 /*
  * Verifie si le buffer est plein ou pas
@@ -244,7 +240,17 @@ int decale_window(uint8_t len_window, uint8_t * min_window, uint8_t seqnum);
  * @return : 1 si le buffer est plein
  *  					0 si il reste au moins une place dans le buffer
  */
-int buffer_plein(uint8_t ** buffer);
+int buffer_plein(pkt_t ** buffer);
+
+
+/*
+ * Récupère le paquet avec le numéro de séquence seqnum depuis le buffer
+ * d'envoi ou de réception
+ *
+ * @return : le paquet en question, ou NULL si aucun paquet avec le bon numéro
+ *           de séquence n'a été trouvé
+ */
+pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum);
 
 /*
  * Retire un element dans le buffer d'envoi ou de reception
@@ -252,13 +258,17 @@ int buffer_plein(uint8_t ** buffer);
  * @return : 0 si l'element a ete correctement retire du buffer
  * 					 1 si l'element n'a pas ete retire correctement
  */
- int retire_buffer(uint8_t ** buffer, uint8_t seqnum);
+int retire_buffer(pkt_t ** buffer, uint8_t seqnum);
 
 
 /*
  * Vérifie le nombre d'arguments
  */
 int arg_check(int argc, int n_min, int n_max);
+
+
+int send_packet(int sockfd, pkt_t *pkt, uint8_t *buffer_encode, pkt_t** buffer_envoi,
+	 							struct sockaddr *ai_addr, socklen_t ai_addrlen);
 
 
 

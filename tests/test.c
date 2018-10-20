@@ -83,11 +83,19 @@ int main(int argc, char const *argv[]) {
     return -1;
   }
 
-  printf("Premiere place du big buffer : %s\n", (char*) *big_buffer);
+  char payload[512];
+  memcpy(payload, (*(big_buffer))+12, pkt_get_length(packet));
 
-  err = retire_buffer(big_buffer, seqnum);
+  printf("Premiere place du big buffer : %s\n", payload);
+  memset(payload, 0, 512);
 
-  printf("Premiere place du big buffer : %s\n", (char*) *big_buffer);
+  uint8_t* packet2 = get_from_buffer(big_buffer, pkt_get_seqnum(packet));
+  memcpy(payload, packet2+12, pkt_get_length(packet));
+  printf("Packet récupéré : %s\n", payload);
+  memset(payload, 0, 512);
+
+  memcpy(payload, (*(big_buffer))+12, pkt_get_length(packet));
+  printf("Premiere place du big buffer : %s\n", payload);
 
 
 

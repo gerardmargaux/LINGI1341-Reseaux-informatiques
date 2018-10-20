@@ -437,22 +437,27 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
   // Gerer le header
   uint8_t window = pkt_get_window(pkt);
 	if(window > 31 || window < 0){
+		fprintf(stderr, "Erreur window\n");
 		return E_WINDOW;
 	}
   uint8_t type = pkt_get_type(pkt);
 	if(type != PTYPE_DATA && type != PTYPE_ACK && type != PTYPE_NACK){
+		fprintf(stderr, "Erreur type\n");
 		return E_TYPE;
 	}
   uint8_t tr = pkt_get_tr(pkt);
 	if(tr != 0 && tr != 1){
+		fprintf(stderr, "Erreur tr\n");
 		return E_TR;
 	}
   uint8_t seqnum = pkt_get_seqnum(pkt);
 	if(seqnum < 0 || seqnum > 255){
+		fprintf(stderr, "Erreur seqnum\n");
 		return E_SEQNUM;
 	}
   uint16_t length = pkt_get_length(pkt); // 2 bytes
 	if(length < 0 || length > 512){
+		fprintf(stderr, "Erreur length\n");
 		return E_LENGTH;
 	}
 	uint32_t timestamp = htonl(pkt_get_timestamp(pkt)); // 4 bytes
@@ -460,6 +465,7 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
 
 	// Teste si le buffer est trop petit
 	if(len < length+16){
+		fprintf(stderr, "Erreur nomem\n");
 		return E_NOMEM;
 	}
 
@@ -487,10 +493,13 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
   // Huitième au douzième byte : crc1
 	memcpy(buf+8, &crc1, 4);
 
+
+	printf("Type : %u\n", type);
 	// Si le paquet n'est pas tronqué
 	if(tr == 0 && type == PTYPE_DATA){
 
 		const char* payload = pkt_get_payload(pkt); // up to 512 bytes
+		printf("Payload avant encodage : %s\n", payload);
 
   	memcpy(buf+12, payload, ntohs(length)); // 12e -> 524e byte : payload
 
@@ -627,68 +636,6 @@ int create_socket(struct sockaddr_in6 *source_addr, int src_port, struct sockadd
 }
 
 
-/* Loop reading a socket and printing to stdout,
- * while reading stdin and writing to the socket
- * @sfd: The socket file descriptor. It is both bound and connected.
- * @return: as soon as stdin signals EOF
- */
-void read_write_loop(int sfd){
-
-  //int err; // Variable pour error check
-  int n_sent;
-  int n_rcvd;
-
-  // Initialisation des variables pour select()
-  int sret;
-  int numfds = sfd + 1;
-  fd_set readfds;
-  struct timeval timeout;
-
-  // Initialisation des buffers
-  char send_buf[] = "Framinem7";
-  char * recv_buf = (char*) malloc(50*sizeof(char));
-  if(recv_buf == NULL){
-    fprintf(stderr, "ERROR malloc()\n");
-    return;
-  }
-
-
-
-    FD_ZERO(&readfds);
-    FD_SET(sfd, &readfds);
-
-    timeout.tv_sec = 10;
-    timeout.tv_usec = 0;
-
-    sret = select(numfds, &readfds, NULL, NULL, &timeout);
-    n_sent = send(sfd, send_buf, strlen(send_buf), 0);
-    fprintf(stderr, "Données envoyées sur le serveur : %s\n", send_buf);
-    if(n_sent == -1){
-      perror("ERROR send()");
-      return;
-    }
-    if(sret == -1){
-      perror("ERROR select()");
-      return;
-    }
-    else if(sret == 0){
-      fprintf(stderr, "select() return value : %d\n", sret);
-      fprintf(stderr, "Timed out.\n");
-    }
-    else if(sret == 1){
-      fprintf(stderr, "select() return value : %d\n", sret);
-      n_rcvd = recv(sfd, recv_buf, sizeof(recv_buf), 0);
-      if(n_rcvd == -1){
-        perror("ERROR recv()");
-        free(recv_buf);
-      }
-      fprintf(stderr, "Données reçues du serveur : %s\n", recv_buf);
-    }
-
-    free(recv_buf);
-    return;
-}
-
 
 /* Block the caller until a message is received on sfd,
  * and connect the socket to the source addresse of the received message.
@@ -759,67 +706,83 @@ int seqnum_inc(int* seqnum){
  *					 1 si une erreur d'argument
  *
  */
- int in_window (uint8_t seqnum, uint8_t min_window, uint8_t len_window){
+ int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window){
 
- 	if (seqnum > 255){
+ 	if (seqnum < 0 || seqnum > 255){
  		printf("Le numero de sequence n'est pas valide\n");
  		return 1;
  	}
 
- 	if (len_window > MAX_WINDOW_SIZE){
- 		printf("La fenetre a une taille trop grande\n");
- 		return 1;
- 	}
-
- 	// Si le numero de sequence ne se trouve pas dans la fenetre
- 	if ((seqnum > (len_window + min_window)) || (seqnum < min_window)){
- 		printf("Le numero de sequence est hors de la fenetre\n");
- 		return -1;
- 	}
-
- 	// Si le numero de sequence se trouve dans la fenetre
- 	return 0;
+	if(min_window < max_window){
+		if(seqnum >= min_window && seqnum <= max_window){
+			return 0;
+		}
+		else{
+			return -1;
+		}
+	}
+	else{
+		if(seqnum >= min_window || seqnum <= max_window){
+			return 0;
+		}
+		else{
+			return -1;
+		}
+	}
  }
 
 
 /*
  * Decale la fenetre de reception ou d'envoi
- *
- * @return : 1 si la fenetre n'a pas ete decalee correctement
- *  					0 si la fenetre a ete deplacee correctement
  */
-int decale_window(uint8_t len_window, uint8_t * min_window, uint8_t seqnum){
-	if (len_window > MAX_WINDOW_SIZE){
-		return 1;
+void decale_window(uint8_t *min_window, uint8_t *max_window){
+	if(*max_window == 255){
+		*min_window = *min_window + 1;
+		*max_window = 0;
 	}
-	if (seqnum > 255){
-		return 1;
+	else if(*min_window == 255){
+		*min_window = 0;
+		*max_window = *max_window + 1;
 	}
-	*min_window = seqnum+1;
-	return 0;
+	else{
+		*min_window = *min_window + 1;
+		*max_window = *max_window + 1;
+	}
 }
 
 
 /*
  * Ajoute un buffer dans le buffer d'envoi ou de reception
  *
- * @return : - le buffer d'envoi ou de reception modifié
+ * @return : 0 si le paquet a bien été ajouté au buffer
+ *           1 si le paquet n'a pas été ajouté au buffer
  *
  */
- int ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept){
+ int ajout_buffer (pkt_t* pkt, pkt_t** buffer_recept){
 	int i = 0;
 	while(i < MAX_WINDOW_SIZE){
 		if (*(buffer_recept+i) == NULL){
-	    *(buffer_recept+i) = buffer;
+	    *(buffer_recept+i) = pkt;
 			return 0;
 	  }
 		else {
 			i++;
 		}
 	}
-	return 0;
+	return 1;
 }
 
+
+pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum){
+	for(int i = 0; i < MAX_WINDOW_SIZE; i++){
+		if(*(buffer+i) != NULL){
+			if(seqnum == pkt_get_seqnum(*(buffer+i))){
+				return *(buffer+i);
+			}
+		}
+	}
+	return NULL;
+}
 
 /*
  * Retire un element dans le buffer d'envoi ou de reception
@@ -827,18 +790,16 @@ int decale_window(uint8_t len_window, uint8_t * min_window, uint8_t seqnum){
  * @return : 0 si l'element a ete correctement retire du buffer
  * 					 1 si l'element n'a pas ete retire correctement
  */
- int retire_buffer(uint8_t ** buffer, uint8_t seqnum){
-	 uint8_t compare;
-	 printf("Test 1\n");
+ int retire_buffer(pkt_t ** buffer, uint8_t seqnum){
 	 for(int i = 0; i < MAX_WINDOW_SIZE; i++){
-		 printf("Boucle\n");
-		 memcpy(&compare, (*(buffer+i))+1, 1);
-		 if (compare == seqnum){
-			 buffer[i] = NULL;
-			 return 0;
-		 }
-	 }
-	 return 1;
+ 		if(*(buffer+i) != NULL){
+ 			if(seqnum == pkt_get_seqnum(*(buffer+i))){
+				*(buffer+i) = NULL;
+				return 0;
+ 			}
+ 		}
+ 	}
+ 	return 1;
  }
 
 
@@ -848,8 +809,8 @@ int decale_window(uint8_t len_window, uint8_t * min_window, uint8_t seqnum){
   * @return : 1 si le buffer est plein
 	*  					0 si il reste au moins une place dans le buffer
   */
- int buffer_plein(uint8_t ** buffer){
-	 for(size_t i = 0; i < LENGTH_BUF_REC; i++){
+ int buffer_plein(pkt_t ** buffer){
+	 for(int i = 0; i < LENGTH_BUF_REC; i++){
 		 if (buffer[i] == NULL){
 			 return 0;
 		 }
@@ -870,5 +831,43 @@ int arg_check(int argc, int n_min, int n_max){
 		fprintf(stderr, "Trop d'arguments.\n");
 		return -1;
 	}
+	return 0;
+}
+
+
+/*
+ *
+ */
+int send_packet(int sockfd, pkt_t *pkt, uint8_t *buffer_encode, pkt_t** buffer_envoi,
+	 							struct sockaddr *ai_addr, socklen_t ai_addrlen){
+
+	int err;
+	int bytes_sent;
+	int err_code; // Variable pour error check
+
+	// Encodage du paquet a envoyer sur le reseau
+	err_code =  pkt_encode(pkt, buffer_encode, 528);
+	if(err_code != PKT_OK){
+		fprintf(stderr, "Erreur encode\n");
+		return -1;
+	}
+
+
+	// Ajout du buffer au buffer d'envoi
+	err = ajout_buffer(pkt, buffer_envoi);
+	if(err != 0){
+		return -1;
+	}
+
+	// Envoi du packet sur le reseau
+	bytes_sent = sendto(sockfd, (void *) buffer_encode, 528, 0,
+											ai_addr, ai_addrlen);
+	if(bytes_sent == -1){
+		perror("Erreur sendto packet");
+		return -1;
+	}
+
+	printf("Fin de l'envoi du packet\n");
+	memset(buffer_encode, 0, 528);
 	return 0;
 }
