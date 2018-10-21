@@ -40,12 +40,6 @@ int main(int argc, char *argv[]) {
   uint8_t max_window = min_window + MAX_WINDOW_SIZE;
   int err; // Variable pour error check
 
-  // Vérification du nombre d'arguments
-  err = arg_check(argc, 3, 5);
-  if(err == -1){
-    return -1;
-  }
-
   pkt_status_code err_code; // Variable pour error check avec les paquets
   int fd = STDOUT; // File descriptor avec lequel on va écrire les données
   int bytes_received = 1; // Nombre de bytes reçus du sender
@@ -60,32 +54,10 @@ int main(int argc, char *argv[]) {
 
   pkt_t * packet_recv = pkt_new();
 
-  // Prise en compte des arguments avec getopt()
-  extern char* optarg;
-  extern int optind, opterr, optopt;
-  char* optstring = "f:";
 
-  char c = (char) getopt(argc, argv, optstring);
-  if(c == '?'){
-    fprintf(stderr, "Option inconnue.\n");
-    fprintf(stderr, "Ecriture sur la sortie standard.\n");
-  }
-  else if(c == -1){ // Ecriture sur la sortie standard
-    printf("Ecriture sur la sortie standard.\n");
-  }
-  else if(c == 'f'){ // Ecriture dans un fichier
-    char* filename = optarg;
-    printf("Ecriture dans le fichier %s\n", filename);
-    fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-    if(fd == -1){
-      perror("Erreur open fichier destination");
-      return -1;
-    }
-  }
-
-  char* hostname = argv[optind];
+  char* hostname = "::1";
   printf("Hostname : %s\n", hostname);
-  char* port = argv[optind+1];
+  char* port = "12345";
   printf("Port : %s\n", port);
 
   // Création du socket
@@ -168,7 +140,7 @@ int main(int argc, char *argv[]) {
 
     if (pkt_get_tr(packet_recv) == 1){
 
-        pkt_t * packet_nack = pkt_new();
+        pkt_t * packet_nack = pkt_ack_new();
 
         err_code = pkt_set_seqnum(packet_nack, seqnum);
         if (err_code != PKT_OK){
@@ -284,8 +256,6 @@ int main(int argc, char *argv[]) {
         }
         printf("Paquet avec seqnum %u retiré du buffer\n", pkt_get_seqnum(packet_ack));
 
-        // Decalage de la fenetre de reception
-        decale_window(&min_window, &max_window);
 
         printf("Min window : %u\n", min_window);
         printf("Max window : %u\n", max_window);

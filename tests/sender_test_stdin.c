@@ -41,12 +41,6 @@ int main(int argc, char *argv[]) {
 
   int err; // Variable pour error check
 
-  // Vérification du nombre d'arguments
-  err = arg_check(argc, 3, 5);
-  if(err == -1){
-    return -1;
-  }
-
 
   int fd = STDIN; // File descriptor avec lequel on va lire les données
   int bytes_read; // Nombre de bytes lus sur l'entrée standard / le fichier source
@@ -61,32 +55,11 @@ int main(int argc, char *argv[]) {
   uint8_t seqnum = 0;
 
 
-  // Prise en compte des arguments avec getopt()
-  extern char* optarg;
-  extern int optind, opterr, optopt;
-  char* optstring = "f:";
 
-  char c = (char) getopt(argc, argv, optstring);
-  if(c == '?'){
-    fprintf(stderr, "Option inconnue.\n");
-    fprintf(stderr, "Lecture sur l'entrée standard.\n");
-  }
-  else if(c == -1){ // Lecture à partir de l'entrée standard
-    printf("Lecture sur l'entrée standard.\n");
-  }
-  else if(c == 'f'){ // Lecture à partir d'un fichier
-    char* filename = optarg;
-    printf("Lecture dans le fichier %s\n", filename);
-    fd = open(filename, O_RDONLY);
-    if(fd == -1){
-      perror("Erreur open fichier source");
-      return -1;
-    }
-  }
 
-  char* hostname = argv[optind];
+  char* hostname = "::1";
   printf("Hostname : %s\n", hostname);
-  char* port = argv[optind+1];
+  char* port = "12345";
   printf("Port : %s\n", port);
 
 
@@ -246,6 +219,8 @@ int main(int argc, char *argv[]) {
 
         sret = select(sockfd+1, &readfds, NULL, NULL, &tv);
 
+        while(1){
+
         while(sret == 0){
           printf("Renvoi du paquet avec numéro de séquence %u\n", pkt_get_seqnum(packet));
           bytes_sent = sendto(sockfd, (void *) buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
@@ -287,12 +262,12 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
-        printf("Seqnum : %u\n", pkt_get_seqnum(ack_received));
+        if(pkt_get_type(ack_received) == PTYPE_ACK){
+
         printf("Reçu ACK pour paquet %d\n", pkt_get_seqnum(ack_received));
 
         // ROn retire les pquets du buffer d'envoi
-        int i = 0;
-        for(i = min_window; i <= pkt_get_seqnum(ack_received); i++){
+        for(int i = min_window; i <= pkt_get_seqnum(ack_received); i++){
           int err_retire_buffer = retire_buffer(buffer_envoi, i);
           printf("Packet %u retiré du buffer d'envoi\n", i);
           if (err_retire_buffer == -1){
@@ -305,6 +280,9 @@ int main(int argc, char *argv[]) {
           window++;
           decale_window(&min_window, &max_window);
         }
+        break;
+      }
+    }
 
 
         free(ack_buffer);

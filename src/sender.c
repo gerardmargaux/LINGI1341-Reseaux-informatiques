@@ -246,6 +246,8 @@ int main(int argc, char *argv[]) {
 
         sret = select(sockfd+1, &readfds, NULL, NULL, &tv);
 
+        while(1){
+
         while(sret == 0){
           printf("Renvoi du paquet avec numéro de séquence %u\n", pkt_get_seqnum(packet));
           bytes_sent = sendto(sockfd, (void *) buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
@@ -287,61 +289,34 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
-        printf("Seqnum du paquet reçu : %u\n", pkt_get_seqnum(ack_received));
-
         if(pkt_get_type(ack_received) == PTYPE_ACK){
-          printf("Reçu ACK pour paquet %d\n", pkt_get_seqnum(ack_received));
 
-          // On retire les paquets du buffer d'envoi
-          for(int i = min_window; i <= pkt_get_seqnum(ack_received); i++){
-            int err_retire_buffer = retire_buffer(buffer_envoi, i);
-            printf("Packet %u retiré du buffer d'envoi\n", i);
-            if (err_retire_buffer == -1){
-              fprintf(stderr, "Erreur retire buffer\n");
-              pkt_del(ack_received);
-              close(sockfd);
-              close(fd);
-              return -1;
-            }
-            window++;
+        printf("Reçu ACK pour paquet %d\n", pkt_get_seqnum(ack_received));
+
+        // ROn retire les pquets du buffer d'envoi
+        for(int i = min_window; i <= pkt_get_seqnum(ack_received); i++){
+          int err_retire_buffer = retire_buffer(buffer_envoi, i);
+          printf("Packet %u retiré du buffer d'envoi\n", i);
+          if (err_retire_buffer == -1){
+            fprintf(stderr, "Erreur retire buffer\n");
+            pkt_del(ack_received);
+            close(sockfd);
+            close(fd);
+            return -1;
           }
+          window++;
+          decale_window(&min_window, &max_window);
         }
-        else{
-          printf("Reçu NACK pour paquet %d\n", pkt_get_seqnum(ack_received));
+        break;
+      }
+    }
 
-          // On renvoie le paquet avec ce numéro de séquence
-          pkt_t *renvoi = get_from_buffer(buffer_envoi, pkt_get_seqnum(ack_received));
-
-        }
 
         free(ack_buffer);
         memset(packet, 0, 528);
         err = pkt_set_type(packet, PTYPE_DATA);
         memset(ack_received, 0, 12);
         err = pkt_set_type(ack_received, PTYPE_ACK);
-        uint8_t * buffer_encode = (uint8_t *)malloc(528);
-        if (buffer_encode == NULL){
-          fprintf(stderr, "Erreur malloc : buffer_encode\n");
-          return -1;
-        }
-
-        size_t len_buffer_encode = 528;
-
-
-        // Encodage du paquet a envoyer sur le reseau
-      	err_code = pkt_encode(packet, buffer_encode, 528);
-      	if(err_code != PKT_OK){
-      		fprintf(stderr, "Erreur encode\n");
-      		return -1;
-      	}
-
-        // Envoi du packet sur le reseau
-      	bytes_sent = sendto(sockfd, (void *) buffer_encode, 528, 0,
-      											servinfo->ai_addr, servinfo->ai_addrlen);
-      	if(bytes_sent == -1){
-      		perror("Erreur sendto packet");
-      		return -1;
-      	}
 
       }
     }
