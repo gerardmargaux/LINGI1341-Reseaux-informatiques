@@ -168,7 +168,7 @@ int main(int argc, char *argv[]) {
 
     if (pkt_get_tr(packet_recv) == 1){
 
-        pkt_t * packet_nack = pkt_new();
+        pkt_t * packet_nack = pkt_ack_new();
 
         err_code = pkt_set_seqnum(packet_nack, seqnum);
         if (err_code != PKT_OK){
@@ -284,8 +284,6 @@ int main(int argc, char *argv[]) {
         }
         printf("Paquet avec seqnum %u retiré du buffer\n", pkt_get_seqnum(packet_ack));
 
-        // Decalage de la fenetre de reception
-        decale_window(&min_window, &max_window);
 
         printf("Min window : %u\n", min_window);
         printf("Max window : %u\n", max_window);
