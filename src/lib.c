@@ -33,7 +33,7 @@ struct __attribute__((__packed__)) pkt {
 /*
  * pkt_new : Fonction qui crée un nouveau paquet de type PTYPE_DATA
  *
- * @return : un nouveau paquet de type PTYPE_DATA
+ * @return : un nouveau paquet de type PTYPE_DATA ou NULL en cas d'erreur
  */
 pkt_t* pkt_new()
 {
@@ -61,7 +61,7 @@ pkt_t* pkt_new()
 /*
  * pkt_ack_new : Fonction qui crée un nouveau paquet de type PTYPE_ACK
  *
- * @return : un nouveau paquet de type PTYPE_ACK
+ * @return : un nouveau paquet de type PTYPE_ACK ou NULL en cas d'erreur
  */
 pkt_t* pkt_ack_new(){
 	pkt_t * new = (pkt_t *) malloc(sizeof(pkt_t));
@@ -183,7 +183,7 @@ uint32_t pkt_get_crc1(const pkt_t * pkt)
  * du paquet place en argument
  *
  * @pkt : pointeur vers un paquet
- * @return : la valeur du CRC2
+ * @return : la valeur du CRC2 ou 0 si il n'y a pas de CRC2
  */
 uint32_t pkt_get_crc2(const pkt_t * pkt)
 {
@@ -195,7 +195,7 @@ uint32_t pkt_get_crc2(const pkt_t * pkt)
  * du paquet place en argument
  *
  * @pkt : pointeur vers un paquet
- * @return : les données contenues dans le payload
+ * @return : un pointeur vers les données contenues dans le payload
  */
 const char* pkt_get_payload(const pkt_t * pkt)
 {

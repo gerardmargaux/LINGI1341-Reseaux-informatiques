@@ -35,6 +35,12 @@ typedef enum {
 /* Taille maximale de Window */
 #define MAX_WINDOW_SIZE 31
 
+#define LENGTH_BUF_REC 31
+
+#define STDIN 0
+#define STDOUT 1
+#define STDERR 2
+
 /* Valeur de retours des fonctions */
 typedef enum {
 	PKT_OK = 0,     /* Le paquet a ete traite avec succes */
@@ -52,77 +58,212 @@ typedef enum {
 
 // Fonctions utiles pour le projet
 
-/* Alloue et initialise une struct pkt de type data
- * @return: NULL en cas d'erreur */
+/*
+ * pkt_new : Fonction qui crée un nouveau paquet de type PTYPE_DATA
+ *
+ * @return : un nouveau paquet de type PTYPE_DATA ou NULL en cas d'erreur
+ */
 pkt_t* pkt_new();
 
-/* Alloue et initialise une struct pkt de type ack
- * @return: NULL en cas d'erreur */
+/*
+ * pkt_ack_new : Fonction qui crée un nouveau paquet de type PTYPE_ACK
+ *
+ * @return : un nouveau paquet de type PTYPE_ACK ou NULL en cas d'erreur
+ */
 pkt_t* pkt_ack_new();
 
-/* Libere le pointeur vers la struct pkt, ainsi que toutes les
+/*
+ * pkt_del : Libere le pointeur vers la struct pkt, ainsi que toutes les
  * ressources associees
+ *
+ * @pkt : pointeur vers un paquet
+ * @return : /
  */
 void pkt_del(pkt_t* pkt);
 
-/* Accesseurs pour les champs toujours presents du paquet.
- * Les valeurs renvoyees sont toutes dans l'endianness native
- * de la machine!
+/*
+ * pkt_get_type : Fonction qui va chercher le type du paquet place en argument
+ *
+ * @pkt : pointeur vers un paquet
+ * @return : le type du paquet
  */
 ptypes_t pkt_get_type     (const pkt_t* pkt);
+
+/*
+ * pkt_get_tr : Fonction qui va chercher le bit qui correspond
+ * au troncage du paquet placé en argument
+ *
+ * @pkt : pointeur vers un paquet
+ * @return : le bit qui correspond au troncage du paquet
+ */
 uint8_t  pkt_get_tr       (const pkt_t* pkt);
+
+/*
+ * pkt_get_window : Fonction qui va chercher la longueur de la fenetre de
+ * l'emetteur du paquet place en argument
+ *
+ * @pkt : pointeur vers un paquet
+ * @return : la longueur de la fenetre glissante
+ */
 uint8_t  pkt_get_window   (const pkt_t* pkt);
+
+/*
+ * pkt_get_seqnum : Fonction qui va chercher le numero de sequence
+ * du paquet place en argument
+ *
+ * @pkt : pointeur vers un paquet
+ * @return : le numero de sequence du paquet
+ */
 uint8_t  pkt_get_seqnum   (const pkt_t* pkt);
+
+/*
+ * pkt_get_length: Fonction qui va chercher la longueur du payload
+ * du paquet place en argument
+ *
+ * @pkt : pointeur vers un paquet
+ * @return : la longueur du payload
+ */
 uint16_t pkt_get_length   (const pkt_t* pkt);
+
+/*
+ * pkt_get_timestamp: Fonction qui va chercher le timestamp
+ * du paquet place en argument
+ *
+ * @pkt : pointeur vers un paquet
+ * @return : le timestamp
+ */
 uint32_t pkt_get_timestamp(const pkt_t* pkt);
+
+/*
+ * pkt_get_crc1: Fonction qui va chercher la valeur du CRC1
+ * du paquet place en argument
+ *
+ * @pkt : pointeur vers un paquet
+ * @return : la valeur du CRC1
+ */
 uint32_t pkt_get_crc1     (const pkt_t* pkt);
 
-/* Renvoie un pointeur vers le payload du paquet, ou NULL s'il n'y
- * en a pas.
- */
-const char* pkt_get_payload(const pkt_t* pkt);
-
-
-/* Renvoie le CRC2 dans l'endianness native de la machine. Si
- * ce field n'est pas present, retourne 0.
+/*
+ * pkt_get_crc2: Fonction qui va chercher la valeur du CRC2
+ * du paquet place en argument
+ *
+ * @pkt : pointeur vers un paquet
+ * @return : la valeur du CRC2 ou 0 si il n'y a pas de CRC2
  */
 uint32_t pkt_get_crc2(const pkt_t* pkt);
 
-/* Setters pour les champs obligatoires du paquet. Si les valeurs
- * fournies ne sont pas dans les limites acceptables, les fonctions
- * doivent renvoyer un code d'erreur adapte.
- * Les valeurs fournies sont dans l'endianness native de la machine!
+/*
+ * pkt_get_payload: Fonction qui va chercher l'information du payload
+ * du paquet place en argument
+ *
+ * @pkt : pointeur vers un paquet
+ * @return : un pointeur vers les données contenues dans le payload
+ */
+const char* pkt_get_payload(const pkt_t* pkt);
+
+/*
+ * pkt_set_type : Fonction qui va initialiser le type du paquet en arguments
+ * a une certaine valeur
+ *
+ * @type : valeur a laquelle le type du paquet doit etre initialisee
+ * @pkt : pointeur vers un paquet
+ * @return : Un code indiquant si l'operation a reussi ou representant
+ * l'erreur rencontree
  */
 pkt_status_code pkt_set_type     (pkt_t* pkt, const ptypes_t type);
+
+/*
+ * pkt_set_tr : Fonction qui va initialiser le bit de troncage du paquet en arguments
+ * a une certaine valeur
+ *
+ * @tr : valeur a laquelle le troncage du paquet doit etre initialisee
+ * @pkt : pointeur vers un paquet
+ * @return : Un code indiquant si l'operation a reussi ou representant
+ * l'erreur rencontree
+ */
 pkt_status_code pkt_set_tr       (pkt_t* pkt, const uint8_t tr);
+
+/*
+ * pkt_set_window : Fonction qui va initialiser la taille de la fenetre du
+ * paquet en arguments a une certaine valeur
+ *
+ * @window : valeur a laquelle la fenetre du paquet doit etre initialisee
+ * @pkt : pointeur vers un paquet
+ * @return : Un code indiquant si l'operation a reussi ou representant
+ * l'erreur rencontree
+ */
 pkt_status_code pkt_set_window   (pkt_t* pkt, const uint8_t window);
+
+/*
+ * pkt_set_seqnum : Fonction qui va initialiser le numero de sequence du
+ * paquet en arguments a une certaine valeur
+ *
+ * @seqnum : valeur a laquelle le numero de sequence du paquet doit etre initialisee
+ * @pkt : pointeur vers un paquet
+ * @return : Un code indiquant si l'operation a reussi ou representant
+ * l'erreur rencontree
+ */
 pkt_status_code pkt_set_seqnum   (pkt_t* pkt, const uint8_t seqnum);
+
+/*
+ * pkt_set_length : Fonction qui va initialiser la longueur du payload du
+ * paquet en arguments a une certaine valeur
+ *
+ * @length : valeur a laquelle la longueur du payload du paquet doit etre initialisee
+ * @pkt : pointeur vers un paquet
+ * @return : Un code indiquant si l'operation a reussi ou representant
+ * l'erreur rencontree
+ */
 pkt_status_code pkt_set_length   (pkt_t* pkt, const uint16_t length);
+
+/*
+ * pkt_set_timestamp : Fonction qui va initialiser le timestamp du
+ * paquet en arguments a une certaine valeur
+ *
+ * @timestamp : valeur a laquelle le timestamp du paquet doit etre initialise
+ * @pkt : pointeur vers un paquet
+ * @return : Un code indiquant si l'operation a reussi ou representant
+ * l'erreur rencontree
+ */
 pkt_status_code pkt_set_timestamp(pkt_t* pkt, const uint32_t timestamp);
+
+/*
+ * pkt_set_crc1 : Fonction qui va initialiser la valeur du CRC1 du
+ * paquet en arguments a une certaine valeur
+ *
+ * @crc1 : valeur a laquelle le CRC1 du paquet doit etre initialisee
+ * @pkt : pointeur vers un paquet
+ * @return : Un code indiquant si l'operation a reussi ou representant
+ * l'erreur rencontree
+ */
 pkt_status_code pkt_set_crc1     (pkt_t* pkt, const uint32_t crc1);
 
-/* Defini la valeur du champs payload du paquet.
- * @data: Une succession d'octets representants le payload
- * @length: Le nombre d'octets composant le payload
- * @POST: pkt_get_length(pkt) == length */
-pkt_status_code pkt_set_payload(pkt_t* pkt,
-                                const char *data,
-                                const uint16_t length);
-
-/* Setter pour CRC2. Les valeurs fournies sont dans l'endianness
- * native de la machine!
- */
+/*
+* pkt_set_crc2 : Fonction qui va initialiser la valeur du CRC2 du
+* paquet en arguments a une certaine valeur
+*
+* @crc2 : valeur a laquelle le CRC2 du paquet doit etre initialisee
+* @pkt : pointeur vers un paquet
+* @return : Un code indiquant si l'operation a reussi ou representant
+* l'erreur rencontree
+*/
 pkt_status_code pkt_set_crc2(pkt_t* pkt, const uint32_t crc2);
 
 /*
- * Crée un paquet et initialise tous ses champs avec les arguments de la fonction
+ * pkt_set_payload : Fonction qui va copier une certaine information dans
+ * le payload du paquet en arguments
+ *
+ * @pkt : pointeur vers un paquet
+ * @data : l'information à mettre dans le payload
+ * @length : la longueur du payload
+ * @return : Un code indiquant si l'operation a reussi ou representant
+ * l'erreur rencontree
  */
-pkt_t* pkt_init(ptypes_t type, uint8_t tr, uint8_t window, uint8_t seqnum,
-								uint16_t length, uint32_t timestamp, uint32_t crc1, uint32_t crc2,
-								const char* payload);
+pkt_status_code pkt_set_payload(pkt_t* pkt, const char *data, const uint16_t length);
+
 
 /*
- * Encode une struct pkt dans un buffer, pret a etre envoye sur le reseau
+ * pkt_encode : Encode une struct pkt dans un buffer, pret a etre envoye sur le reseau
  * (c-a-d en network byte-order), incluant le CRC32 du header et
  * eventuellement le CRC32 du payload si celui-ci est non nul.
  *
@@ -131,15 +272,15 @@ pkt_t* pkt_init(ptypes_t type, uint8_t tr, uint8_t window, uint8_t seqnum,
  * @len: La taille disponible dans le buffer
  * @len-POST: Le nombre de d'octets ecrit dans le buffer
  * @return: Un code indiquant si l'operation a reussi ou E_NOMEM si
- *         le buffer est trop petit.
+ * le buffer est trop petit.
  */
 pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len);
 
 /*
- * Decode des donnees recues et cree une nouvelle structure pkt.
+ * pkt_decode : Decode des donnees recues et cree une nouvelle structure pkt.
  * Le paquet recu est en network byte-order.
  * La fonction verifie que:
- * - Le CRC32 du header recu est le mÃªme que celui decode a la fin
+ * - Le CRC32 du header recu est le même que celui decode a la fin
  *   du header (en considerant le champ TR a 0)
  * - S'il est present, le CRC32 du payload recu est le meme que celui
  *   decode a la fin du payload
@@ -151,112 +292,164 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len);
  * @len: Le nombre de bytes recus
  * @pkt: Une struct pkt valide
  * @post: pkt est la representation du paquet recu
- *
  * @return: Un code indiquant si l'operation a reussi ou representant
- *         l'erreur rencontree.
+ * l'erreur rencontree
  */
 pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt);
 
-/* Resolve the resource name to an usable IPv6 address
- * @address: The name to resolve
- * @rval: Where the resulting IPv6 address descriptor should be stored
- * @return: NULL if it succeeded, or a pointer towards
- *          a string describing the error if any.
- *          (const char* means the caller cannot modify or free the return value,
- *           so do not use malloc!)
+/*
+ * real_address : Trouve le nom de la ressource correspondant à une adresse IPv6
+ *
+ * @address: L'adresse a trouver
+ * @rval: Où le resultat de la description de l'adresse IPv6 sera stockee
+ *
+ * @return: - NULL si tout s'est bien deroule
+ *          - un pointeur vers un string decrivant l'erreur sinon
  */
 const char * real_address(const char *address, struct sockaddr_in6 *rval);
 
-/* Creates a socket and initialize it
- * @source_addr: if !NULL, the source address that should be bound to this socket
- * @src_port: if >0, the port on which the socket is listening
- * @dest_addr: if !NULL, the destination address to which the socket should send data
- * @dst_port: if >0, the destination port to which the socket should be connected
- * @return: a file descriptor number representing the socket,
- *         or -1 in case of error (explanation will be printed on stderr)
+/*
+ * create_socket : Cree un socket et l'initialise
+ *
+ * @source_addr: si !NULL, l'adresse source devrait etre liee a ce socket
+ * @src_port: si >0, le port sur lequel le socket ecoute
+ * @dest_addr: si !NULL, l'adresse de destination auquelle le socket doit
+ * envoyer de l'information
+ * @dst_port: si >0, le port de destination auquel le socket devrait etre connecte
+ *
+ * @return: - un numero de file descriptor representant le socket
+ *          - -1 en cas d'erreur
  */
 int create_socket(struct sockaddr_in6 *source_addr,
                   int src_port,
                   struct sockaddr_in6 *dest_addr,
                   int dst_port);
 
-/* Loop reading a socket and printing to stdout,
- * while reading stdin and writing to the socket
- * @sfd: The socket file descriptor. It is both bound and connected.
- * @return: as soon as stdin signals EOF
- */
-void read_write_loop(const int sfd);
 
-/* Block the caller until a message is received on sfd,
- * and connect the socket to the source addresse of the received message.
- * @sfd: a file descriptor to a bound socket but not yet connected
- * @return: 0 in case of success, -1 otherwise
- * @POST: This call is idempotent, it does not 'consume' the data of the message,
- * and could be repeated several times blocking only at the first call.
- */
+/*
+* wait_for_client : Bloque le receveur jusqu'a ce qu'un message soit recu sur sfd
+* et connecte le socket a l'adresse source du message recu
+*
+* @sfd: un file descriptor vers un socket lie mais pas connecte
+*
+* @return: - 0 en cas de succes
+*				  -1 otherwise
+*/
 int wait_for_client(int sfd);
 
 
 /*
- * Incrémente le numéro de séquence de 1.
- * Si le numéro de séquence était 255, le remet à 0.
+ * seqnum_inc : Incremente le numéro de sequence de 1.
+ * Si le numero de sequence etait 255, le remet à 0.
+ *
+ * @seqnum : numero de sequence à incrementer
  *
  * @return : 0 si le numéro de séquence a été incrémenté
  *           1 si le numéro de séquence a été remis à 0
  *           -1 si le numéro de séquence n'était pas valide
  */
-int seqnum_inc(int* seqnum);
+int seqnum_inc(uint8_t* seqnum);
 
 
 /*
- * Vérifie si le numéro de séquence est dans la fenetre
+ * in_window : Vérifie si le numéro de séquence est dans la fenetre
  *
- * @return : 0 si il est dans la fenetre et est ajouté au buffer de reception
- *					 -1 si il est hors de la fenetre. Le paquet recu est discardé
+ * @seqnum : numero de sequence à verifier
+ * @min_window : le plus petit numero de sequence present dans la fenetre
+ * @max_window : le plus grand numero de sequence present dans la fenetre
+ *
+ * @return : 0 si il est dans la fenetre
+ *					 -1 si il est hors de la fenetre
+ *					 1 si une erreur d'argument
  *
  */
 int in_window (uint8_t seqnum, uint8_t min_window, uint8_t max_window);
 
 
 /*
- * Ajoute un buffer dans le buffer d'envoi ou de reception
+ * decale_window : Decale la fenetre de reception ou d'envoi
  *
- * @return : - le buffer d'envoi ou de reception modifié
+ * @min_window : un pointeur vers le plus petit numero de sequence present dans la fenetre
+ * @max_window : un pointeur vers le plus grand numero de sequence present dans la fenetre
  *
+ * @return : /
  */
-int ajout_buffer (uint8_t * buffer, uint8_t ** buffer_recept);
+void decale_window(uint8_t *min_window, uint8_t *max_window);
+
 
 /*
- * Decale la fenetre de reception ou d'envoi
+ * ajout_buffer : Ajoute un buffer dans le buffer d'envoi ou de reception
  *
- * @return : 1 si la fenetre n'a pas ete decalee correctement
- *  					0 si la fenetre a ete deplacee correctement
+ * @pkt : un pointeur vers un paquet
+ * @buffer_recept : buffer de reception qui contient lui-meme des buffer
+ * @min_window : le plus petit numero de sequence present dans la fenetre
+ *
+ * @return : 0 si le paquet a bien été ajouté au buffer
+ *           1 si le paquet n'a pas été ajouté au buffer
  */
-int decale_window(uint8_t len_window, uint8_t * min_window, uint8_t seqnum);
+void ajout_buffer (pkt_t* pkt, pkt_t** buffer_recept, uint8_t min_window);
+
 
 /*
- * Verifie si le buffer est plein ou pas
+ * buffer_plein : Verifie si le buffer est plein ou pas
  *
- * @return : 1 si le buffer est plein
- *  					0 si il reste au moins une place dans le buffer
+ * @buffer : buffer de paquets a parcourir
+ *
+ * @return : - 1 si le buffer est plein
+ *  					- 0 si il reste au moins une place dans le buffer
  */
-int buffer_plein(uint8_t ** buffer);
+int buffer_plein(pkt_t ** buffer);
+
 
 /*
- * Retire un element dans le buffer d'envoi ou de reception
+ * get_from_buffer : Retrouve le paquet qui correspond à un numero de sequence
+ * particulier
  *
- * @return : 0 si l'element a ete correctement retire du buffer
- * 					 1 si l'element n'a pas ete retire correctement
+ * @pkt : un pointeur vers un buffer de paquet
+ * @seqnum : numero de sequence du paquet a retrouver
+ *
+ * @return : - le paquet qui a pour numero de sequence seqnum
+ *           - NULL en cas d'erreur
  */
- int retire_buffer(uint8_t ** buffer, uint8_t seqnum);
+pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum);
 
- /*
-  * Vérification du nombre d'arguments entres en ligne de commande
-	*
-	* @return : 0 si les arguments sont valides
-	*						-1 en cas d'erreur
-	*
-  */
- int arg_check(int argc, int n_min, int n_max);
+/*
+ * retire_buffer : Retire un paquet dans le buffer d'envoi ou de reception
+ *
+ * @buffer : buffer de paquets
+ * @seqnum : numero de sequence du paquet a retirer du buffer
+ *
+ * @return : - 0 si l'element a ete correctement retire du buffer
+ * 					 - 1 si l'element n'a pas ete retire correctement
+ */
+int retire_buffer(pkt_t ** buffer, uint8_t seqnum);
+
+/*
+ * write_buffer : Ecrit tous les éléments du buffer qui sont disponible et dans l'ordre
+ *
+ * @fd : un numero de file descriptor representant le socket
+ * @buffer : un buffer de paquets
+ * @min_window : un pointeur vers le plus petit numero de sequence present dans la fenetre
+ * @max_window : un pointeur vers le plus grand numero de sequence present dans la fenetre
+ *
+ * @return : le nombre d'elements ecrits
+ *
+ */
+int write_buffer(int fd, pkt_t **buffer, uint8_t *min_window, uint8_t *max_window);
+
+
+/*
+ * arg_check : Vérification du nombre d'arguments passes en ligne de commande
+ *
+ * @argc : le nombre d'arguments passes en ligne de commande
+ * @n_min : le nombre min d'arguments requis
+ * @n_max : le nombre maximal d'arguments que l'on peut passer en ligne de commande
+ *
+ * @return : - 0 si le nombre d'arguments a ete verifie correctement
+ *   				 - -1 en cas d'erreur
+ */
+int arg_check(int argc, int n_min, int n_max);
+
+
 
 #endif
