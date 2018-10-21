@@ -291,7 +291,8 @@ int main(int argc, char *argv[]) {
         printf("Reçu ACK pour paquet %d\n", pkt_get_seqnum(ack_received));
 
         // ROn retire les pquets du buffer d'envoi
-        for(int i = min_window; i <= pkt_get_seqnum(ack_received); i++){
+        int i = 0;
+        for(i = min_window; i <= pkt_get_seqnum(ack_received); i++){
           int err_retire_buffer = retire_buffer(buffer_envoi, i);
           printf("Packet %u retiré du buffer d'envoi\n", i);
           if (err_retire_buffer == -1){
