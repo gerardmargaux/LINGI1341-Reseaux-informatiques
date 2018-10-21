@@ -56,9 +56,9 @@ int main(int argc, char *argv[]) {
 
   uint8_t window = MAX_WINDOW_SIZE;
   uint8_t min_window = 0;
-  uint8_t max_window = min_window + MAX_WINDOW_SIZE - 1;
+  uint8_t max_window = min_window + MAX_WINDOW_SIZE;
 
-  int seqnum = 0;
+  uint8_t seqnum = 0;
 
 
   // Prise en compte des arguments avec getopt()
@@ -115,6 +115,7 @@ int main(int argc, char *argv[]) {
 
   pkt_t* packet = pkt_new();
   pkt_t* ack_received = pkt_ack_new();
+  char* payload_buf = (char*) malloc(MAX_PAYLOAD_SIZE*sizeof(char));
 
   pkt_t ** buffer_envoi = (pkt_t **) malloc(MAX_WINDOW_SIZE*sizeof(pkt_t*));
   if (buffer_envoi == NULL){
@@ -128,8 +129,12 @@ int main(int argc, char *argv[]) {
 
   while(1){
 
+    while(in_window(seqnum, min_window, max_window) == -1){
+      fprintf(stderr, "Numéro de séquence hors de la fenêtre d'envoi\n");
+      seqnum_inc(&seqnum);
+    }
+
     uint8_t* ack_buffer = (uint8_t*) malloc(16);
-    char* payload_buf = (char*) malloc(MAX_PAYLOAD_SIZE*sizeof(char));
     if(payload_buf == NULL){
       fprintf(stderr, "Erreur malloc : payload_buf\n");
       return -1;
@@ -162,6 +167,8 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
+        memset(payload_buf, 0, 512);
+
         printf("Packet payload : %s\n", pkt_get_payload(packet));
 
         err_code = pkt_set_seqnum(packet, seqnum);
@@ -172,6 +179,8 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
+        printf("Packet seqnum : %u\n", pkt_get_seqnum(packet));
+
         err = seqnum_inc(&seqnum);
         if(err == -1){
           pkt_del(packet);
@@ -180,6 +189,9 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
+        printf("Packet seqnum : %u\n", pkt_get_seqnum(packet));
+
+        window--;
         err_code = pkt_set_window(packet, window);
         if(err == -1){
           pkt_del(packet);
@@ -187,6 +199,10 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
+
+        // Ajout du paquet au buffer d'envoi
+      	ajout_buffer(packet, buffer_envoi, min_window);
+        printf("Packet seqnum : %u\n", pkt_get_seqnum(*buffer_envoi));
 
         uint8_t * buffer_encode = (uint8_t *)malloc(528);
         if (buffer_encode == NULL){
@@ -198,19 +214,9 @@ int main(int argc, char *argv[]) {
 
 
         // Encodage du paquet a envoyer sur le reseau
-      	err_code =  pkt_encode(packet, buffer_encode, 528);
+      	err_code = pkt_encode(packet, buffer_encode, 528);
       	if(err_code != PKT_OK){
       		fprintf(stderr, "Erreur encode\n");
-      		return -1;
-      	}
-
-        uint8_t payload[512];
-        memcpy(payload, buffer_encode + 12, pkt_get_length(packet));
-        printf("Payload encodé : %s\n", (char*) payload);
-
-        // Ajout du buffer au buffer d'envoi
-      	err = ajout_buffer(packet, buffer_envoi);
-      	if(err != 0){
       		return -1;
       	}
 
@@ -225,7 +231,6 @@ int main(int argc, char *argv[]) {
         printf("Fin de l'envoi du packet\n");
 
 
-        free(payload_buf);
 
 
         struct sockaddr_in6 receiver_addr;
@@ -282,25 +287,24 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
-        printf("Test 5\n");
         printf("Seqnum : %u\n", pkt_get_seqnum(ack_received));
+        printf("Reçu ACK pour paquet %d\n", pkt_get_seqnum(ack_received));
 
-        // Retrait du buffer decode du buffer d'envoi
-        int err_retire_buffer = retire_buffer(buffer_envoi, pkt_get_seqnum(ack_received));
-        if (err_retire_buffer == -1){
-          fprintf(stderr, "Erreur retire buffer\n");
-          pkt_del(ack_received);
-          close(sockfd);
-          close(fd);
-          return -1;
+        // ROn retire les pquets du buffer d'envoi
+        for(int i = min_window; i <= pkt_get_seqnum(ack_received); i++){
+          int err_retire_buffer = retire_buffer(buffer_envoi, i);
+          printf("Packet %u retiré du buffer d'envoi\n", i);
+          if (err_retire_buffer == -1){
+            fprintf(stderr, "Erreur retire buffer\n");
+            pkt_del(ack_received);
+            close(sockfd);
+            close(fd);
+            return -1;
+          }
+          window++;
+          decale_window(&min_window, &max_window);
         }
 
-        printf("Test 6\n");
-
-        // Decalage de la fenetre d'envoi
-        decale_window(&min_window, &max_window);
-
-        printf("Reçu ACK pour paquet %d\n", pkt_get_seqnum(ack_received));
 
         free(ack_buffer);
         memset(packet, 0, 528);
@@ -315,6 +319,7 @@ int main(int argc, char *argv[]) {
 
   pkt_del(packet);
   pkt_del(ack_received);
+  free(payload_buf);
 
   freeaddrinfo(servinfo);
   close(sockfd);

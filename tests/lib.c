@@ -228,16 +228,12 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 
 	pkt_status_code err_code;
 
-	printf("Test decode 1\n");
-
   if (len < 12){ // Il n'y a pas de header car il est encode sur 12 bytes
     return E_NOHEADER;
   }
 	else if(len > 528){ // Le paquet est trop long
 		return E_UNCONSISTENT;
 	}
-
-	printf("Test decode 2\n");
 
 	// Initialisation des variables
 	ptypes_t type;
@@ -683,7 +679,7 @@ int wait_for_client(int sfd){
  *           1 si le numéro de séquence a été remis à 0
  *           -1 si le numéro de séquence n'était pas valide
  */
-int seqnum_inc(int* seqnum){
+int seqnum_inc(uint8_t* seqnum){
 	if(*seqnum >= 0 && *seqnum <= 254){
 		*seqnum = *seqnum + 1;
 		return 0;
@@ -758,18 +754,13 @@ void decale_window(uint8_t *min_window, uint8_t *max_window){
  *           1 si le paquet n'a pas été ajouté au buffer
  *
  */
- int ajout_buffer (pkt_t* pkt, pkt_t** buffer_recept){
-	int i = 0;
-	while(i < MAX_WINDOW_SIZE){
-		if (*(buffer_recept+i) == NULL){
-	    *(buffer_recept+i) = pkt;
-			return 0;
-	  }
-		else {
-			i++;
-		}
+void ajout_buffer (pkt_t* pkt, pkt_t** buffer_recept, uint8_t min_window){
+	if(min_window <= pkt_get_seqnum(pkt)){
+		*(buffer_recept + pkt_get_seqnum(pkt) - min_window) = pkt;
 	}
-	return 1;
+	else{
+		*(buffer_recept + (255-min_window+1+pkt_get_seqnum(pkt))) = pkt;
+	}
 }
 
 
@@ -818,6 +809,35 @@ pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum){
 	 return 1;
  }
 
+/*
+ * Ecrit tous les éléments du buffer qui sont disponible et dans l'ordre
+ *
+ * @return : le nombre d'éléments écrits
+ *
+ */
+int write_buffer(int fd, pkt_t **buffer, uint8_t *min_window, uint8_t *max_window){
+	int i = 0;
+	for(; i < LENGTH_BUF_REC; i++){
+	 if(buffer[i] == NULL){
+		 return i;
+	 }
+	 else{
+		 if(fd == STDOUT){
+			 printf("%s\n", pkt_get_payload(buffer[i]));
+			 buffer[i] = NULL;
+			 decale_window(min_window, max_window);
+		 }
+		 else{
+			 write(fd, pkt_get_payload(buffer[i]), pkt_get_length(buffer[i]));
+			 buffer[i] = NULL;
+			 decale_window(min_window, max_window);
+		 }
+	 }
+ }
+ return i;
+}
+
+
 
 /*
  * Vérification du nombre d'arguments
@@ -831,43 +851,5 @@ int arg_check(int argc, int n_min, int n_max){
 		fprintf(stderr, "Trop d'arguments.\n");
 		return -1;
 	}
-	return 0;
-}
-
-
-/*
- *
- */
-int send_packet(int sockfd, pkt_t *pkt, uint8_t *buffer_encode, pkt_t** buffer_envoi,
-	 							struct sockaddr *ai_addr, socklen_t ai_addrlen){
-
-	int err;
-	int bytes_sent;
-	int err_code; // Variable pour error check
-
-	// Encodage du paquet a envoyer sur le reseau
-	err_code =  pkt_encode(pkt, buffer_encode, 528);
-	if(err_code != PKT_OK){
-		fprintf(stderr, "Erreur encode\n");
-		return -1;
-	}
-
-
-	// Ajout du buffer au buffer d'envoi
-	err = ajout_buffer(pkt, buffer_envoi);
-	if(err != 0){
-		return -1;
-	}
-
-	// Envoi du packet sur le reseau
-	bytes_sent = sendto(sockfd, (void *) buffer_encode, 528, 0,
-											ai_addr, ai_addrlen);
-	if(bytes_sent == -1){
-		perror("Erreur sendto packet");
-		return -1;
-	}
-
-	printf("Fin de l'envoi du packet\n");
-	memset(buffer_encode, 0, 528);
 	return 0;
 }

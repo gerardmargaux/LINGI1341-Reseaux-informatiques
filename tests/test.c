@@ -26,8 +26,10 @@
 
 int main(int argc, char const *argv[]) {
 
-  uint8_t seqnum = 142;
-  const char *data = argv[1];
+  int err;
+  uint8_t seqnum = 0;
+  uint8_t min_window = 0;
+  uint8_t max_window = 31;
   pkt_status_code err_code;
   pkt_t *packet = pkt_new();
   printf("Paquet créé\n");
@@ -39,7 +41,16 @@ int main(int argc, char const *argv[]) {
     return -1;
   }
 
-  err_code = pkt_set_payload(packet, data, strlen(data));
+  err = seqnum_inc(&seqnum);
+  err = seqnum_inc(&seqnum);
+  err = seqnum_inc(&seqnum);
+  if(err == -1){
+    pkt_del(packet);
+    fprintf(stderr, "Erreur seqnum_inc\n");
+    return -1;
+  }
+
+  err_code = pkt_set_payload(packet, "Bonjour", 8);
   printf("Payload set\n");
   if(err_code != PKT_OK){
     pkt_del(packet);
@@ -47,62 +58,43 @@ int main(int argc, char const *argv[]) {
     return -1;
   }
 
-  uint8_t *buf = (uint8_t*) malloc(528);
-  if(buf == NULL){
-    pkt_del(packet);
-    fprintf(stderr, "Erreur malloc\n");
-    return -1;
-  }
+  pkt_t** big_buffer = (pkt_t**) malloc(31*sizeof(pkt_t*));
 
-  size_t len = 16 + pkt_get_length(packet);
-  err_code = pkt_encode(packet, buf, len);
+  ajout_buffer(packet, big_buffer, min_window);
+
+  printf("Paquet en 1e place du big buffer : %s\n", pkt_get_payload(*(big_buffer)));
+
+  pkt_t *packet2 = pkt_new();
+  err_code = pkt_set_seqnum(packet2, seqnum);
   if(err_code != PKT_OK){
     pkt_del(packet);
-    fprintf(stderr, "Erreur encode\n");
+    fprintf(stderr, "Erreur set_seqnum\n");
     return -1;
   }
 
-  printf("Encode OK\n");
 
-  uint8_t compare;
-  memcpy(&compare, buf+1, 1);
-  printf("Compare : %u\n", compare);
-  if(compare == seqnum){
-    printf("Compare = seqnum\n");
-  }
-
-  uint8_t** big_buffer = (uint8_t**) malloc(MAX_WINDOW_SIZE*sizeof(uint8_t*));
-
-  printf("Premiere place du big buffer : %s\n", *big_buffer);
-
-  int err = ajout_buffer(buf, big_buffer);
-  if(err != 0){
-    fprintf(stderr, "Erreur ajout_buffer\n");
+  err = seqnum_inc(&seqnum);
+  if(err == -1){
     pkt_del(packet);
-    free(buf);
+    fprintf(stderr, "Erreur seqnum_inc\n");
     return -1;
   }
 
-  char payload[512];
-  memcpy(payload, (*(big_buffer))+12, pkt_get_length(packet));
+  err_code = pkt_set_payload(packet2, "Ca va ?", 8);
+  printf("Payload set\n");
+  if(err_code != PKT_OK){
+    pkt_del(packet);
+    fprintf(stderr, "Erreur set_payload\n");
+    return -1;
+  }
 
-  printf("Premiere place du big buffer : %s\n", payload);
-  memset(payload, 0, 512);
+  ajout_buffer(packet2, big_buffer, min_window);
 
-  uint8_t* packet2 = get_from_buffer(big_buffer, pkt_get_seqnum(packet));
-  memcpy(payload, packet2+12, pkt_get_length(packet));
-  printf("Packet récupéré : %s\n", payload);
-  memset(payload, 0, 512);
+  printf("Paquet en 3e place du big buffer : %s\n", pkt_get_payload(*(big_buffer+3)));
 
-  memcpy(payload, (*(big_buffer))+12, pkt_get_length(packet));
-  printf("Premiere place du big buffer : %s\n", payload);
-
-
-
-
+  write_buffer(STDOUT, big_buffer);
 
   pkt_del(packet);
-  free(buf);
 
   return 0;
 }

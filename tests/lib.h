@@ -203,7 +203,7 @@ int wait_for_client(int sfd);
  *           1 si le numéro de séquence a été remis à 0
  *           -1 si le numéro de séquence n'était pas valide
  */
-int seqnum_inc(int* seqnum);
+int seqnum_inc(uint8_t* seqnum);
 
 
 /*
@@ -231,7 +231,7 @@ void decale_window(uint8_t *min_window, uint8_t *max_window);
  * @return : - le buffer d'envoi ou de reception modifié
  *
  */
-int ajout_buffer (pkt_t* pkt, pkt_t** buffer_recept);
+void ajout_buffer (pkt_t* pkt, pkt_t** buffer_recept, uint8_t min_window);
 
 
 /*
@@ -261,14 +261,13 @@ pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum);
 int retire_buffer(pkt_t ** buffer, uint8_t seqnum);
 
 
+int write_buffer(int fd, pkt_t **buffer);
+
+
 /*
  * Vérifie le nombre d'arguments
  */
 int arg_check(int argc, int n_min, int n_max);
-
-
-int send_packet(int sockfd, pkt_t *pkt, uint8_t *buffer_encode, pkt_t** buffer_envoi,
-	 							struct sockaddr *ai_addr, socklen_t ai_addrlen);
 
 
 

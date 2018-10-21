@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
 
   uint8_t window = MAX_WINDOW_SIZE;
   uint8_t min_window = 0;
-  uint8_t max_window = min_window + MAX_WINDOW_SIZE - 1;
+  uint8_t max_window = min_window + MAX_WINDOW_SIZE;
   int err; // Variable pour error check
 
   // Vérification du nombre d'arguments
@@ -49,19 +49,14 @@ int main(int argc, char *argv[]) {
   pkt_status_code err_code; // Variable pour error check avec les paquets
   int fd = STDOUT; // File descriptor avec lequel on va écrire les données
   int bytes_received = 1; // Nombre de bytes reçus du sender
-  //int bytes_written; // Nombre de bytes écrits à chaque itération
+  int bytes_written; // Nombre de bytes écrits à chaque itération
   int bytes_sent; // Nombre de bytes renvoyes au sender (ack)
 
-/*
-  uint8_t ** buffer_recept = (uint8_t **)malloc(LENGTH_BUF_REC*sizeof(uint8_t*)); // Buffer de buffer de reception des paquets
-  if (buffer_recept == NULL){
-    fprintf(stderr, "Erreur malloc : buffer_recept\n");
+  pkt_t **buffer_recept = (pkt_t**) calloc(window, sizeof(pkt_t*));
+  if(buffer_recept == NULL){
+    fprintf(stderr, "Erreur malloc\n");
     return -1;
   }
-  */
-
-  pkt_t **buffer_recept = (pkt_t**) malloc(window*sizeof(pkt_t*));
-  memset(buffer_recept, 0, 31);
 
   pkt_t * packet_recv = pkt_new();
 
@@ -141,9 +136,6 @@ int main(int argc, char *argv[]) {
       break;
     }
 
-    char payload[2];
-    memcpy(payload, data_received + 12, 2);
-
     // Decodage du buffer recu sur le reseau
     const size_t len = 528;
 
@@ -156,8 +148,19 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
-    printf("Paquet reçu : %s\n", pkt_get_payload(packet_recv));
+    // On regarde si le paquet reçu est dans la fenêtre de réception
+    uint8_t seqnum_recv = pkt_get_seqnum(packet_recv);
 
+    printf("Seqnum : %u\n", seqnum_recv);
+    // Teste si le numero de sequence est dans la fenetre
+    int val = in_window(seqnum_recv, min_window, max_window);
+    printf("val : %d\n", val);
+
+    // Si le paquet reçu n'est pas dans la fenêtre de réception, on l'ignore
+    if (val == -1){
+      free(data_received);
+    }
+    else{
 
     // Si le paquet recu est tronque
     // On renvoie un paquet de type NACK au sender
@@ -219,25 +222,13 @@ int main(int argc, char *argv[]) {
 
       else { // Si le paquet recu n'est pas tronque
 
-
-        uint8_t seqnum = pkt_get_seqnum(packet_recv);
-
-        printf("Seqnum : %u\n", seqnum);
-        // Teste si le numero de sequence est dans la fenetre
-        int val = in_window(seqnum, min_window, max_window);
-        printf("val : %d\n", val);
-        if (val == -1){
-          close(sockfd);
-          close(fd);
-          return -1;
-        }
-        else {
-
           pkt_t * packet_ack = pkt_ack_new();
           // Ajout du buffer au buffer de reception
           if(buffer_plein(buffer_recept) == 0){
-            ajout_buffer(packet_recv, buffer_recept);
+            ajout_buffer(packet_recv, buffer_recept, min_window);
             window--;
+            err = write_buffer(fd, buffer_recept);
+            window = window - err;
             err_code = pkt_set_seqnum(packet_ack, seqnum);
             if (err_code != PKT_OK){
               pkt_del(packet_ack);
@@ -300,6 +291,7 @@ int main(int argc, char *argv[]) {
 
         printf("Fin de l'envoi du ack\n");
         free(buffer_encode);
+        seqnum_inc(&seqnum);
       }
 
       else{ // Le buffer est plein
