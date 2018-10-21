@@ -1,5 +1,3 @@
-main: clean lib sender receiver
-
 sender: sender.o
 	@gcc -Wall -o $@ src/sender.o src/lib.a -lz
 
@@ -24,7 +22,7 @@ test: clean lib test.o
 test.o:
 	@gcc -Wall -o src/test.o -c src/test.c -lz -I src
 
-.PHONY: clean tests
+.PHONY: tests
 
 clean:
 	@rm -f *.o sender receiver test && clear && cd src && rm -f *.a *.o

@@ -1,5 +1,3 @@
-main: clean lib sender_test receiver_test
-
 sender_test: sender_test.o
 	@gcc -Wall -o $@ sender_test.o lib.a -lz
 
@@ -24,7 +22,7 @@ test: clean lib test.o
 test.o:
 	@gcc -Wall -o test.o -c test.c -lz
 
-.PHONY: clean tests
+.PHONY: tests
 
 clean:
 	@rm -f *.o *.a sender_test receiver_test test && clear
