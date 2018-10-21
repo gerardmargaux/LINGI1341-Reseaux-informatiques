@@ -1,3 +1,96 @@
+commit fdd33651c6434874611b5943da9502973eb0e473
+Author: François De Keersmaeker <francoisdekeersmaeker8@gmail.com>
+Date:   Sun Oct 21 22:34:35 2018 +0200
+
+    Virer fichier inutiles
+
+ tests/lib.a           | Bin 15008 -> 0 bytes
+ tests/lib.o           | Bin 14052 -> 0 bytes
+ tests/receiver_test   | Bin 23628 -> 0 bytes
+ tests/receiver_test.o | Bin 6316 -> 0 bytes
+ tests/sender_test     | Bin 23788 -> 0 bytes
+ tests/sender_test.o   | Bin 7132 -> 0 bytes
+ 6 files changed, 0 insertions(+), 0 deletions(-)
+
+commit c5cc100583219524096e2f803b104308c3c6f9b7
+Merge: 62cdd9d e7ac6df
+Author: François De Keersmaeker <francoisdekeersmaeker8@gmail.com>
+Date:   Sun Oct 21 22:33:26 2018 +0200
+
+    Merge branch 'master' of github.com:xuagram98/reseaux
+
+commit 62cdd9d770ba000900721b26a687099d276cff03
+Author: François De Keersmaeker <francoisdekeersmaeker8@gmail.com>
+Date:   Sun Oct 21 22:33:22 2018 +0200
+
+    Update sender receiver
+
+ log.log        |   0
+ receiver       | Bin 23628 -> 0 bytes
+ sender         | Bin 23788 -> 0 bytes
+ src/lib.a      | Bin 15008 -> 0 bytes
+ src/lib.o      | Bin 14052 -> 0 bytes
+ src/receiver.c |   4 +---
+ src/receiver.o | Bin 6316 -> 0 bytes
+ src/sender.c   |  61 +++++++++++++++++++++++++++++++++++++++++++--------------
+ src/sender.o   | Bin 7132 -> 0 bytes
+ 9 files changed, 47 insertions(+), 18 deletions(-)
+
+commit e7ac6df777060052539b12f8f60c2851ae596aef
+Author: Margaux Gerard <margaux.gerard@student.uclouvain.be>
+Date:   Sun Oct 21 21:49:28 2018 +0200
+
+    Archive soumission
+
+ .DS_Store                                          | Bin 6148 -> 8196 bytes
+ projet1_gerard_dekeersmaeker.zip                   | Bin 286827 -> 0 bytes
+ projet1_gerard_dekeersmaeker/Makefile              |   4 +-
+ .../{tests/lib.o => src/lib.a}                     | Bin 14052 -> 15008 bytes
+ projet1_gerard_dekeersmaeker/src/sender.c          |   3 +-
+ projet1_gerard_dekeersmaeker/src/test.c            |  91 ---------------------
+ projet1_gerard_dekeersmaeker/tests/receiver_test.o | Bin 6316 -> 0 bytes
+ projet1_gerard_dekeersmaeker/tests/sender_test.o   | Bin 7132 -> 0 bytes
+ src/.DS_Store                                      | Bin 0 -> 6148 bytes
+ tests/Makefile                                     |   4 +-
+ 10 files changed, 4 insertions(+), 98 deletions(-)
+
+commit 79c154dfb094f34728d4a304912b86f72d4f2e88
+Author: Margaux Gerard <margaux.gerard@student.uclouvain.be>
+Date:   Sun Oct 21 21:13:07 2018 +0200
+
+    Archive de soumission
+
+ .DS_Store                                          |  Bin 6148 -> 6148 bytes
+ gitlog.stat                                        | 1237 ++++++++++++++++++++
+ projet1_gerard_dekeersmaeker.zip                   |  Bin 0 -> 286827 bytes
+ projet1_gerard_dekeersmaeker/.DS_Store             |  Bin 0 -> 6148 bytes
+ projet1_gerard_dekeersmaeker/Makefile              |   30 +
+ projet1_gerard_dekeersmaeker/gitlog.stat           | 1237 ++++++++++++++++++++
+ projet1_gerard_dekeersmaeker/rapport.pdf           |  Bin 0 -> 212469 bytes
+ projet1_gerard_dekeersmaeker/src/.DS_Store         |  Bin 0 -> 6148 bytes
+ projet1_gerard_dekeersmaeker/src/lib.c             | 1005 ++++++++++++++++
+ projet1_gerard_dekeersmaeker/src/lib.h             |  455 +++++++
+ projet1_gerard_dekeersmaeker/src/receiver.c        |  314 +++++
+ projet1_gerard_dekeersmaeker/src/sender.c          |  330 ++++++
+ projet1_gerard_dekeersmaeker/src/test.c            |   91 ++
+ projet1_gerard_dekeersmaeker/tests/.DS_Store       |  Bin 0 -> 6148 bytes
+ projet1_gerard_dekeersmaeker/tests/Makefile        |   30 +
+ projet1_gerard_dekeersmaeker/tests/lib.a           |  Bin 0 -> 15008 bytes
+ projet1_gerard_dekeersmaeker/tests/lib.c           | 1005 ++++++++++++++++
+ projet1_gerard_dekeersmaeker/tests/lib.h           |  455 +++++++
+ projet1_gerard_dekeersmaeker/tests/lib.o           |  Bin 0 -> 14052 bytes
+ projet1_gerard_dekeersmaeker/tests/receiver_test   |  Bin 0 -> 23628 bytes
+ projet1_gerard_dekeersmaeker/tests/receiver_test.c |  314 +++++
+ projet1_gerard_dekeersmaeker/tests/receiver_test.o |  Bin 0 -> 6316 bytes
+ projet1_gerard_dekeersmaeker/tests/sender_test     |  Bin 0 -> 23788 bytes
+ projet1_gerard_dekeersmaeker/tests/sender_test.c   |  330 ++++++
+ projet1_gerard_dekeersmaeker/tests/sender_test.o   |  Bin 0 -> 7132 bytes
+ projet1_gerard_dekeersmaeker/tests/test.c          |  100 ++
+ projet1_gerard_dekeersmaeker/tests/test_Cunit.c    |  205 ++++
+ tests/.DS_Store                                    |  Bin 0 -> 6148 bytes
+ tests/test_Cunit.c                                 |    1 +
+ 29 files changed, 7139 insertions(+)
+
 commit c6532d32e3ebda2e33a2af96793cb111bba4ef30
 Author: Margaux Gerard <margaux.gerard@student.uclouvain.be>
 Date:   Sun Oct 21 20:07:13 2018 +0200
