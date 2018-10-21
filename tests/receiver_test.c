@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
   pkt_status_code err_code; // Variable pour error check avec les paquets
   int fd = STDOUT; // File descriptor avec lequel on va écrire les données
   int bytes_received = 1; // Nombre de bytes reçus du sender
-  int bytes_written; // Nombre de bytes écrits à chaque itération
+  //int bytes_written; // Nombre de bytes écrits à chaque itération
   int bytes_sent; // Nombre de bytes renvoyes au sender (ack)
 
   pkt_t **buffer_recept = (pkt_t**) calloc(window, sizeof(pkt_t*));
@@ -164,9 +164,10 @@ int main(int argc, char *argv[]) {
 
     // Si le paquet recu est tronque
     // On renvoie un paquet de type NACK au sender
+    uint8_t seqnum = pkt_get_seqnum(packet_recv);
+
     if (pkt_get_tr(packet_recv) == 1){
 
-        uint8_t seqnum = pkt_get_seqnum(packet_recv);
         pkt_t * packet_nack = pkt_new();
 
         err_code = pkt_set_seqnum(packet_nack, seqnum);
@@ -227,7 +228,7 @@ int main(int argc, char *argv[]) {
           if(buffer_plein(buffer_recept) == 0){
             ajout_buffer(packet_recv, buffer_recept, min_window);
             window--;
-            err = write_buffer(fd, buffer_recept);
+            err = write_buffer(fd, buffer_recept, &min_window, &max_window);
             window = window - err;
             err_code = pkt_set_seqnum(packet_ack, seqnum);
             if (err_code != PKT_OK){

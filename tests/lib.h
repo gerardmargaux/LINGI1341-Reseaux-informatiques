@@ -261,7 +261,7 @@ pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum);
 int retire_buffer(pkt_t ** buffer, uint8_t seqnum);
 
 
-int write_buffer(int fd, pkt_t **buffer);
+int write_buffer(int fd, pkt_t **buffer, uint8_t *min_window, uint8_t *max_window);
 
 
 /*
