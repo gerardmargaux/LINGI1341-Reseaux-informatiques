@@ -221,8 +221,7 @@ int main(int argc, char *argv[]) {
       	}
 
         // Envoi du packet sur le reseau
-      	bytes_sent = sendto(sockfd, (void *) buffer_encode, 528, 0,
-      											servinfo->ai_addr, servinfo->ai_addrlen);
+      	bytes_sent = sendto(sockfd, (void *) buffer_encode, 528, 0, servinfo->ai_addr, servinfo->ai_addrlen);
       	if(bytes_sent == -1){
       		perror("Erreur sendto packet");
       		return -1;
@@ -310,7 +309,7 @@ int main(int argc, char *argv[]) {
         printf("Min Window : %u\n", min_window);
         printf("Max Window : %u\n", max_window);
         }
-        //break;
+        break;
       }
       else {
         fprintf(stderr, "Erreur : le paquet recu n'est pas un acquittement\n");
@@ -321,16 +320,15 @@ int main(int argc, char *argv[]) {
       }
     }
 
-        free(ack_buffer);
         memset(packet, 0, 528);
         err = pkt_set_type(packet, PTYPE_DATA);
         memset(ack_received, 0, 12);
         err = pkt_set_type(ack_received, PTYPE_ACK);
-
+        // free(ack_buffer); Probleme de memoire
       }
     }
-  }
 
+  }
 
   pkt_del(packet);
   pkt_del(ack_received);
