@@ -293,21 +293,22 @@ int main(int argc, char *argv[]) {
 
         printf("Reçu ACK pour paquet %d\n", pkt_get_seqnum(ack_received));
 
-        // ROn retire les pquets du buffer d'envoi
-        for(int i = min_window; i <= pkt_get_seqnum(ack_received); i++){
-          int err_retire_buffer = retire_buffer(buffer_envoi, i);
-          printf("Packet %u retiré du buffer d'envoi\n", i);
-          if (err_retire_buffer == -1){
-            fprintf(stderr, "Erreur retire buffer\n");
-            pkt_del(ack_received);
-            close(sockfd);
-            close(fd);
-            return -1;
-          }
-          window++;
-          decale_window(&min_window, &max_window);
+        // On retire les pquets du buffer d'envoi
+        uint8_t seqnum_ack_received = pkt_get_seqnum(ack_received);
+          int i;
+		      for(i = min_window; i <= seqnum_ack_received; i++){
+            int err_retire_buffer = retire_buffer(buffer_envoi, i);
+            printf("Packet %u retiré du buffer d'envoi\n", i);
+            if (err_retire_buffer == -1){
+              fprintf(stderr, "Erreur retire buffer\n");
+              pkt_del(ack_received);
+              close(sockfd);
+              close(fd);
+              return -1;
+            }
+        window++;
+        decale_window(&min_window, &max_window);
         }
-        break;
       }
     }
 

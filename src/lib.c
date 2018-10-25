@@ -921,6 +921,7 @@ pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum){
 	 for(int i = 0; i < MAX_WINDOW_SIZE; i++){
  		if(*(buffer+i) != NULL){
  			if(seqnum == pkt_get_seqnum(*(buffer+i))){
+				pkt_del(*(buffer+i));
 				*(buffer+i) = NULL;
 				return 0;
  			}
@@ -967,11 +968,13 @@ int write_buffer(int fd, pkt_t **buffer, uint8_t *min_window, uint8_t *max_windo
 	 else{
 		 if(fd == STDOUT){
 			 printf("%s\n", pkt_get_payload(buffer[i]));
+			 pkt_del(buffer[i]);
 			 buffer[i] = NULL;
 			 decale_window(min_window, max_window);
 		 }
 		 else{
 			 write(fd, pkt_get_payload(buffer[i]), pkt_get_length(buffer[i]));
+			 pkt_del(buffer[i]);
 			 buffer[i] = NULL;
 			 decale_window(min_window, max_window);
 		 }

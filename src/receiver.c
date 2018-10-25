@@ -125,12 +125,13 @@ int main(int argc, char *argv[]) {
   while(bytes_received > 0){
 
     struct sockaddr_in6 sender_addr, receiver_addr;
-    socklen_t addr_len = sizeof(struct sockaddr);
+    socklen_t addr_len = sizeof(struct sockaddr_in6);
     memset(&sender_addr, 0, sizeof(sender_addr));
     memset(&receiver_addr, 0, sizeof(receiver_addr));
 
     uint8_t* data_received = (uint8_t*) malloc(528);
     bytes_received = recvfrom(sockfd, data_received, 528, 0, (struct sockaddr *) &sender_addr, &addr_len);
+    //printf("Addresse du sender : %s\n",(unsigned char) &sender_addr.sin6_addr.S6_addr);
     if(strcmp((char*) data_received, "STOP") == 0){
       printf("Fin de la réception de données\n");
       break;

@@ -1,22 +1,22 @@
-main: clean lib sender receiver
+main: lib sender receiver
 
 sender: sender.o
 	@gcc -Wall -o $@ src/sender.o src/lib.a -lz
 
 sender.o:
-	@gcc -Wall -o src/sender.o -c src/sender.c -lz -I src
+	@gcc -Wall -o src/sender.o -c src/sender.c -I src
 
 receiver: receiver.o
 	@gcc -Wall -o $@ src/receiver.o src/lib.a -lz
 
 receiver.o:
-	@gcc -Wall -o src/receiver.o -c src/receiver.c -lz -I src
+	@gcc -Wall -o src/receiver.o -c src/receiver.c -I src
 
 lib: lib.o
 	@ar r src/lib.a src/lib.o
 
 lib.o:
-	@gcc -Wall -o src/lib.o -c src/lib.c -lz
+	@gcc -Wall -o src/lib.o -c src/lib.c
 
 .PHONY: clean tests
 
