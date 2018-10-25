@@ -230,9 +230,6 @@ int main(int argc, char *argv[]) {
 
         printf("Fin de l'envoi du packet\n");
 
-
-
-
         struct sockaddr_in6 receiver_addr;
         memset(&receiver_addr, 0, sizeof(receiver_addr));
         socklen_t addr_len = sizeof(struct sockaddr);
@@ -299,6 +296,7 @@ int main(int argc, char *argv[]) {
 		      for(i = min_window; i <= seqnum_ack_received; i++){
             int err_retire_buffer = retire_buffer(buffer_envoi, i);
             printf("Packet %u retiré du buffer d'envoi\n", i);
+            printf("Return retire buffer : %u\n", err_retire_buffer);
             if (err_retire_buffer == -1){
               fprintf(stderr, "Erreur retire buffer\n");
               pkt_del(ack_received);
@@ -307,11 +305,21 @@ int main(int argc, char *argv[]) {
               return -1;
             }
         window++;
+        printf("Window : %u\n", window);
         decale_window(&min_window, &max_window);
+        printf("Min Window : %u\n", min_window);
+        printf("Max Window : %u\n", max_window);
         }
+        //break;
+      }
+      else {
+        fprintf(stderr, "Erreur : le paquet recu n'est pas un acquittement\n");
+        pkt_del(ack_received);
+        close(sockfd);
+        close(fd);
+        return -1;
       }
     }
-
 
         free(ack_buffer);
         memset(packet, 0, 528);
@@ -327,6 +335,7 @@ int main(int argc, char *argv[]) {
   pkt_del(packet);
   pkt_del(ack_received);
   free(payload_buf);
+  free(buffer_envoi);
 
   freeaddrinfo(servinfo);
   close(sockfd);
