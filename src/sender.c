@@ -61,33 +61,31 @@ int main(int argc, char *argv[]) {
   uint8_t seqnum = 0;
 
 
-  // Prise en compte des arguments avec getopt()
-  extern char* optarg;
-  extern int optind, opterr, optopt;
-  char* optstring = "f:";
-
-  char c = (char) getopt(argc, argv, optstring);
-  if(c == '?'){
-    fprintf(stderr, "Option inconnue.\n");
-    fprintf(stderr, "Lecture sur l'entrée standard.\n");
-  }
-  else if(c == -1){ // Lecture à partir de l'entrée standard
-    printf("Lecture sur l'entrée standard.\n");
-  }
-  else if(c == 'f'){ // Lecture à partir d'un fichier
-    char* filename = optarg;
-    printf("Lecture dans le fichier %s\n", filename);
-    fd = open(filename, O_RDONLY);
-    if(fd == -1){
-      perror("Erreur open fichier source");
-      return -1;
+  // Prise en compte des arguments en ligne de commande
+  int a = 1;
+  char* hostname;
+  int host_set = 0;
+  char* port;
+  for(; a < argc; a++){
+    if(strcmp(argv[a], "-f") == 0){
+      a++;
+      printf("Lecture dans le fichier %s\n", argv[a]);
+      fd = open(argv[a], O_RDONLY);
+      if(fd == -1){
+        perror("Erreur open fichier source");
+        return -1;
+      }
+    }
+    else if(host_set == 0){
+      hostname = argv[a];
+      printf("Hostname : %s\n", hostname);
+      host_set = 1;
+    }
+    else{
+      port = argv[a];
+      printf("Port : %s\n", port);
     }
   }
-
-  char* hostname = argv[optind];
-  printf("Hostname : %s\n", hostname);
-  char* port = argv[optind+1];
-  printf("Port : %s\n", port);
 
 
   // Création du socket
