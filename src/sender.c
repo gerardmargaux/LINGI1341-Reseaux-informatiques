@@ -219,7 +219,7 @@ int main(int argc, char *argv[]) {
       	}
 
         // Envoi du packet sur le reseau
-      	bytes_sent = sendto(sockfd, (void *) buffer_encode, 528, 0, servinfo->ai_addr, servinfo->ai_addrlen);
+      	bytes_sent = sendto(sockfd, (void *) buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
       	if(bytes_sent == -1){
       		perror("Erreur sendto packet");
       		return -1;
@@ -322,6 +322,7 @@ int main(int argc, char *argv[]) {
         err = pkt_set_type(packet, PTYPE_DATA);
         memset(ack_received, 0, 12);
         err = pkt_set_type(ack_received, PTYPE_ACK);
+        free(buffer_encode);
         // free(ack_buffer); Probleme de memoire
       }
     }
