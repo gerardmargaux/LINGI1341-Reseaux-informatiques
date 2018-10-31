@@ -122,10 +122,9 @@ int main(int argc, char *argv[]) {
 
   while(bytes_received > 0){
 
-    struct sockaddr_in6 sender_addr, receiver_addr;
+    struct sockaddr_in6 sender_addr;
     socklen_t addr_len = sizeof(struct sockaddr_in6);
     memset(&sender_addr, 0, sizeof(sender_addr));
-    memset(&receiver_addr, 0, sizeof(receiver_addr));
 
     uint8_t* data_received = (uint8_t*) malloc(528);
     bytes_received = recvfrom(sockfd, data_received, 528, 0, (struct sockaddr *) &sender_addr, &addr_len);
