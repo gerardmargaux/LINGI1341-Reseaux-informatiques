@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
       seqnum_inc(&seqnum);
     }
 
-    uint8_t* ack_buffer = (uint8_t*) malloc(16);
+    uint8_t * ack_buffer = (uint8_t*) malloc(16 * sizeof(uint8_t));
     if(payload_buf == NULL){
       fprintf(stderr, "Erreur malloc : payload_buf\n");
       return -1;
@@ -151,6 +151,7 @@ int main(int argc, char *argv[]) {
       break;
     }
     else{
+
       if(fd == STDIN){ // Remplacement du caractère de linefeed par le caractère de fin de string
         *(payload_buf+strlen(payload_buf)-1) = '\0';
       }
@@ -219,6 +220,16 @@ int main(int argc, char *argv[]) {
       	}
 
         // Envoi du packet sur le reseau
+        // Affichage de l'adresse du receiver
+        /*
+        struct sockaddr_in6 * test = (struct sockaddr_in6 *) servinfo->ai_addr;
+        char * addresse = (char*) malloc(1024);
+        inet_ntop(AF_INET6, &(test->sin6_addr), addresse, 1024);
+        printf("Addresse : %s\n", addresse);
+        free(test);
+        free(addresse);
+        */
+
       	bytes_sent = sendto(sockfd, (void *) buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
       	if(bytes_sent == -1){
       		perror("Erreur sendto packet");
@@ -239,7 +250,6 @@ int main(int argc, char *argv[]) {
         tv.tv_usec = 500000;
 
         sret = select(sockfd+1, &readfds, NULL, NULL, &tv);
-
         while(1){
 
         while(sret == 0){
@@ -317,20 +327,27 @@ int main(int argc, char *argv[]) {
         return -1;
       }
     }
-
+        printf("Objet ack_received 1 : %p \n", ack_received);
+        printf("Objet packet 1: %p \n", packet);
+        printf("Objet buffer_encode : %p \n", buffer_encode);
+        printf("Objet ack_buffer : %p \n", ack_buffer);
         memset(packet, 0, 528);
         err = pkt_set_type(packet, PTYPE_DATA);
         memset(ack_received, 0, 12);
         err = pkt_set_type(ack_received, PTYPE_ACK);
         free(buffer_encode);
-        // free(ack_buffer); Probleme de memoire
+        printf("Test 1\n");
       }
+      printf("Test 2\n");
     }
-
+    printf("Test 3\n");
   }
-
+  printf("Objet ack_received 2 : %p \n", ack_received);
+  printf("Objet packet 2 : %p \n", packet);
   pkt_del(packet);
   pkt_del(ack_received);
+  printf("Objet payload_buf: %p \n", payload_buf);
+  printf("Objet buffer_envoi: %p \n", buffer_envoi);
   free(payload_buf);
   free(buffer_envoi);
 
