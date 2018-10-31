@@ -21,7 +21,7 @@ lib.o:
 .PHONY: clean tests
 
 clean:
-	@rm -f *.o local_sender local_receiver test && clear && cd src && rm -f *.a *.o && cd ../tests && $(MAKE) clean
+	@rm -f *.o sender receiver test && clear && cd src && rm -f *.a *.o && cd ../tests && $(MAKE) clean
 
 tests:
 	@cd tests && $(MAKE)
