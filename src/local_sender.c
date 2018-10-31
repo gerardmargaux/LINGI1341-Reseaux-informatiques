@@ -113,7 +113,6 @@ int main(int argc, char *argv[]) {
 
   pkt_t* packet = pkt_new();
   pkt_t* ack_received = pkt_ack_new();
-  char* payload_buf = (char*) malloc(MAX_PAYLOAD_SIZE*sizeof(char));
 
   pkt_t ** buffer_envoi = (pkt_t **) malloc(MAX_WINDOW_SIZE*sizeof(pkt_t*));
   if (buffer_envoi == NULL){
@@ -132,9 +131,14 @@ int main(int argc, char *argv[]) {
       seqnum_inc(&seqnum);
     }
 
-    uint8_t * ack_buffer = (uint8_t*) malloc(16 * sizeof(uint8_t));
-    if(payload_buf == NULL){
+    char * payload_buf = (char*) malloc(MAX_PAYLOAD_SIZE*sizeof(char));
+    if (payload_buf == NULL){
       fprintf(stderr, "Erreur malloc : payload_buf\n");
+      return -1;
+    }
+    uint8_t * ack_buffer = (uint8_t*) malloc(16 * sizeof(uint8_t));
+    if(ack_buffer == NULL){
+      fprintf(stderr, "Erreur malloc : ack_buffer\n");
       return -1;
     }
 
@@ -147,7 +151,7 @@ int main(int argc, char *argv[]) {
     else if(bytes_read == 0){
       bytes_sent = sendto(sockfd, "STOP", 5, 0, servinfo->ai_addr, servinfo->ai_addrlen);
       printf("Fin de l'envoi de données.\n");
-      free(payload_buf);
+      //free(payload_buf);
       break;
     }
     else{
@@ -336,19 +340,14 @@ int main(int argc, char *argv[]) {
         memset(ack_received, 0, 12);
         err = pkt_set_type(ack_received, PTYPE_ACK);
         free(buffer_encode);
-        printf("Test 1\n");
       }
-      printf("Test 2\n");
+
     }
-    printf("Test 3\n");
+    free(payload_buf);
   }
-  printf("Objet ack_received 2 : %p \n", ack_received);
-  printf("Objet packet 2 : %p \n", packet);
+
   pkt_del(packet);
   pkt_del(ack_received);
-  printf("Objet payload_buf: %p \n", payload_buf);
-  printf("Objet buffer_envoi: %p \n", buffer_envoi);
-  free(payload_buf);
   free(buffer_envoi);
 
   freeaddrinfo(servinfo);

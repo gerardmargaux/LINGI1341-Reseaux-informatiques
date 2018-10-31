@@ -10,7 +10,7 @@ receiver: local_receiver.o
 	@gcc -Wall -o $@ src/local_receiver.o src/lib.a -lz
 
 local_receiver.o:
-	@gcc -Wall -o src/local_receiver.o -c src/receiver.c -I src
+	@gcc -Wall -o src/local_receiver.o -c src/local_receiver.c -I src
 
 lib: lib.o
 	@ar r src/lib.a src/lib.o

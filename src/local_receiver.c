@@ -299,6 +299,8 @@ int main(int argc, char *argv[]) {
         printf("Max window : %u\n", max_window);
 
         printf("Fin de l'envoi du ack\n");
+        //printf("Objet data_received : %p \n", data_received);
+        //printf("Objet buffer_encode : %p \n", buffer_encode);
         free(data_received);
         free(buffer_encode);
       }
@@ -313,7 +315,7 @@ int main(int argc, char *argv[]) {
 
   pkt_del(packet_recv);
   pkt_del(packet_ack);
-  
+
   free(buffer_recept);
 
   close(sockfd);
