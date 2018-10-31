@@ -59,6 +59,7 @@ int main(int argc, char *argv[]) {
   }
 
   pkt_t * packet_recv = pkt_new();
+  pkt_t * packet_ack = pkt_ack_new();
 
   // Prise en compte des arguments en ligne de commande
   int a = 1;
@@ -221,7 +222,6 @@ int main(int argc, char *argv[]) {
 
       else { // Si le paquet recu n'est pas tronque
 
-          pkt_t * packet_ack = pkt_ack_new();
           // Ajout du buffer au buffer de reception
           if(buffer_plein(buffer_recept) == 0){
             ajout_buffer(packet_recv, buffer_recept, min_window);
@@ -261,7 +261,8 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
-        pkt_del(packet_ack);
+        memset(packet_ack, 0, 12);
+        err_code = pkt_set_type(packet_ack, PTYPE_ACK);
 
         // Envoi du ack sur le reseau
         bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, (struct sockaddr *) &sender_addr, addr_len);
