@@ -108,8 +108,7 @@ int main(int argc, char *argv[]) {
     freeaddrinfo(servinfo);
     return -1;
   }
-  socklen_t addr_len = sizeof(struct sockaddr_in6);
-  struct sockaddr * addr_sendto = servinfo->ai_addr;
+
 
 
   pkt_t* packet = pkt_new();
@@ -133,7 +132,7 @@ int main(int argc, char *argv[]) {
       seqnum_inc(&seqnum);
     }
 
-    uint8_t * ack_buffer = (uint8_t*) malloc(12 * sizeof(uint8_t));
+    uint8_t * ack_buffer = (uint8_t*) malloc(16 * sizeof(uint8_t));
     if(payload_buf == NULL){
       fprintf(stderr, "Erreur malloc : payload_buf\n");
       return -1;
@@ -146,7 +145,7 @@ int main(int argc, char *argv[]) {
       return -1;
     }
     else if(bytes_read == 0){
-      bytes_sent = sendto(sockfd, "STOP", 5, 0, servinfo->ai_addr, addr_len);
+      bytes_sent = sendto(sockfd, "STOP", 5, 0, servinfo->ai_addr, servinfo->ai_addrlen);
       printf("Fin de l'envoi de données.\n");
       free(payload_buf);
       break;
@@ -158,6 +157,7 @@ int main(int argc, char *argv[]) {
       }
       if(*payload_buf != '\0'){ // Si on a effectivement écrit quelque chose
         printf("Chaine lue : %s\n", payload_buf);
+
 
         err_code = pkt_set_payload(packet, payload_buf, strlen(payload_buf));
         if(err_code != PKT_OK){
@@ -230,7 +230,7 @@ int main(int argc, char *argv[]) {
         free(addresse);
         */
 
-        bytes_sent = sendto(sockfd, (void *) buffer_encode, len_buffer_encode, 0, addr_sendto, addr_len);
+      	bytes_sent = sendto(sockfd, (void *) buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
       	if(bytes_sent == -1){
       		perror("Erreur sendto packet");
       		return -1;
@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
 
         while(sret == 0){
           printf("Renvoi du paquet avec numéro de séquence %u\n", pkt_get_seqnum(packet));
-          bytes_sent = sendto(sockfd, (void *) buffer_encode, len_buffer_encode, 0, (struct sockaddr *) servinfo->ai_addr, addr_len);
+          bytes_sent = sendto(sockfd, (void *) buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
           if(bytes_sent == -1){
             perror("Erreur sendto packet");
             free(payload_buf);
@@ -335,16 +335,23 @@ int main(int argc, char *argv[]) {
         err = pkt_set_type(packet, PTYPE_DATA);
         memset(ack_received, 0, 12);
         err = pkt_set_type(ack_received, PTYPE_ACK);
-        free(buffer_encode); // Sinon probleme de memoire
+        free(buffer_encode);
+        printf("Test 1\n");
       }
+      printf("Test 2\n");
     }
+    printf("Test 3\n");
   }
-
+  printf("Objet ack_received 2 : %p \n", ack_received);
+  printf("Objet packet 2 : %p \n", packet);
   pkt_del(packet);
   pkt_del(ack_received);
+  printf("Objet payload_buf: %p \n", payload_buf);
+  printf("Objet buffer_envoi: %p \n", buffer_envoi);
   free(payload_buf);
   free(buffer_envoi);
 
+  freeaddrinfo(servinfo);
   close(sockfd);
   if(fd != 0){
     close(fd);

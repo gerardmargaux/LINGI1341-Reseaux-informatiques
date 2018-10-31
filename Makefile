@@ -1,16 +1,16 @@
 main: clean lib sender receiver
 
-sender: sender.o
-	@gcc -Wall -o $@ src/sender.o src/lib.a -lz
+sender: local_sender.o
+	@gcc -Wall -o $@ src/local_sender.o src/lib.a -lz
 
-sender.o:
-	@gcc -Wall -o src/sender.o -c src/sender.c -I src
+local_sender.o:
+	@gcc -Wall -o src/local_sender.o -c src/local_sender.c -I src
 
-receiver: receiver.o
-	@gcc -Wall -o $@ src/receiver.o src/lib.a -lz
+receiver: local_receiver.o
+	@gcc -Wall -o $@ src/local_receiver.o src/lib.a -lz
 
-receiver.o:
-	@gcc -Wall -o src/receiver.o -c src/receiver.c -I src
+local_receiver.o:
+	@gcc -Wall -o src/local_receiver.o -c src/receiver.c -I src
 
 lib: lib.o
 	@ar r src/lib.a src/lib.o
@@ -21,7 +21,7 @@ lib.o:
 .PHONY: clean tests
 
 clean:
-	@rm -f *.o sender receiver test && clear && cd src && rm -f *.a *.o && cd ../tests && $(MAKE) clean
+	@rm -f *.o local_sender local_receiver test && clear && cd src && rm -f *.a *.o && cd ../tests && $(MAKE) clean
 
 tests:
 	@cd tests && $(MAKE)
