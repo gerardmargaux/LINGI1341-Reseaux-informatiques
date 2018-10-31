@@ -1,4 +1,4 @@
-main: lib sender receiver
+main: clean lib sender receiver
 
 sender: sender.o
 	@gcc -Wall -o $@ src/sender.o src/lib.a -lz
