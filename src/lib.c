@@ -878,14 +878,21 @@ void decale_window(uint8_t *min_window, uint8_t *max_window){
  * @return : 0 si le paquet a bien été ajouté au buffer
  *           1 si le paquet n'a pas été ajouté au buffer
  */
-void ajout_buffer (pkt_t* pkt, pkt_t** buffer_recept, uint8_t min_window){
-	if(min_window <= pkt_get_seqnum(pkt)){
-		*(buffer_recept + pkt_get_seqnum(pkt) - min_window) = pkt;
-	}
-	else{
-		*(buffer_recept + (255-min_window+1+pkt_get_seqnum(pkt))) = pkt;
-	}
-}
+ void ajout_buffer (pkt_t* pkt, pkt_t** buffer_recept, uint8_t min_window){
+ 	int i;
+ 	printf("Min window : %u\n", min_window);
+ 	printf("Seqnum : %u\n", pkt_get_seqnum(pkt));
+ 	if(min_window <= pkt_get_seqnum(pkt)){
+ 		i = pkt_get_seqnum(pkt) - min_window;
+ 		printf("Place à laquelle le paquet est mis dans le buffer : %d\n", i);
+ 		*(buffer_recept + i) = pkt;
+ 	}
+ 	else{
+ 		i = (255-min_window+1+pkt_get_seqnum(pkt));
+ 		printf("Place à laquelle le paquet est mis dans le buffer : %d\n", i);
+ 		*(buffer_recept + i) = pkt;
+ 	}
+ }
 
 /*
  * get_from_buffer : Retrouve le paquet qui correspond à un numero de sequence
