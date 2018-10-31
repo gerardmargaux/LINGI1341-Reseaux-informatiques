@@ -1,13 +1,13 @@
 main: clean lib sender receiver
 
 sender: local_sender.o
-	@gcc -Wall -o $@ src/local_sender.o src/lib.a -lz
+	@gcc -Wall -g -o $@ src/local_sender.o src/lib.a -lz
 
 local_sender.o:
 	@gcc -Wall -o src/local_sender.o -c src/local_sender.c -I src
 
 receiver: local_receiver.o
-	@gcc -Wall -o $@ src/local_receiver.o src/lib.a -lz
+	@gcc -Wall -g -o $@ src/local_receiver.o src/lib.a -lz
 
 local_receiver.o:
 	@gcc -Wall -o src/local_receiver.o -c src/local_receiver.c -I src
