@@ -313,6 +313,7 @@ int main(int argc, char *argv[]) {
 
   pkt_del(packet_recv);
   pkt_del(packet_ack);
+  
   free(buffer_recept);
 
   close(sockfd);
