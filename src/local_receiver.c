@@ -137,7 +137,6 @@ int main(int argc, char *argv[]) {
 
     uint8_t* data_received = (uint8_t*) malloc(528);
     bytes_received = recvfrom(sockfd, data_received, 528, 0, (struct sockaddr *) &sender_addr, &addr_len);
-    //printf("Addresse du sender : %s\n",(unsigned char) &sender_addr.sin6_addr.S6_addr);
     if(strcmp((char*) data_received, "STOP") == 0){
       printf("Fin de la réception de données\n");
       break;
@@ -300,6 +299,7 @@ int main(int argc, char *argv[]) {
         printf("Max window : %u\n", max_window);
 
         printf("Fin de l'envoi du ack\n");
+        free(data_received);
         free(buffer_encode);
       }
 
@@ -311,7 +311,10 @@ int main(int argc, char *argv[]) {
   }
 }
 
-
+  pkt_del(packet_recv);
+  pkt_del(packet_ack);
+  
+  free(buffer_recept);
 
   close(sockfd);
   if(fd != 1){
