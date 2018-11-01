@@ -18,7 +18,7 @@
 
 // Definition de la structure d'un paquet
 struct __attribute__((__packed__)) pkt {
-	char * payload;
+  char * payload;
   // Ne pas oublier d'inverser le sens des bits
   uint8_t window:5; // Encode sur 5 bits
   uint8_t tr:1; // Encode sur 1 bit
@@ -30,6 +30,16 @@ struct __attribute__((__packed__)) pkt {
   uint32_t crc2; // Encode sur 32 bits (4 octets)
 };
 
+struct __attribute__((__packed__)) ack {
+  uint8_t window:5; // Encode sur 5 bits
+  uint8_t tr:1; // Encode sur 1 bit
+  uint8_t type:2; // Encode sur 2 bits
+  uint8_t seqnum; // Encode sur 8 bits
+  uint16_t length; // Encode sur 16 bits
+  uint32_t timestamp; // Encode sur 32 bits (4 octets)
+  uint32_t crc1; // Encode sur 32 bits (4 octets)
+};
+
 /*
  * pkt_new : Fonction qui crée un nouveau paquet de type PTYPE_DATA
  *
@@ -37,7 +47,7 @@ struct __attribute__((__packed__)) pkt {
  */
 pkt_t* pkt_new()
 {
-	pkt_t * new = (pkt_t *) malloc(sizeof(pkt_t));
+  pkt_t * new = (pkt_t *) malloc(sizeof(pkt_t));
   if (new == NULL){
     fprintf(stderr, "Erreur du malloc");
     return NULL;
@@ -50,7 +60,7 @@ pkt_t* pkt_new()
   new->timestamp = 0;
   new->crc1 = 0;
   new->crc2 = 0;
-	new->payload = (char *)malloc(MAX_PAYLOAD_SIZE * sizeof(char));
+  new->payload = (char *)malloc(MAX_PAYLOAD_SIZE*sizeof(char));
   if (new->payload == NULL){
     fprintf(stderr, "Erreur du malloc");
     return NULL;
@@ -63,8 +73,8 @@ pkt_t* pkt_new()
  *
  * @return : un nouveau paquet de type PTYPE_ACK ou NULL en cas d'erreur
  */
-pkt_t* pkt_ack_new(){
-	pkt_t * new = (pkt_t *) malloc(sizeof(pkt_t));
+ack_t* ack_new(){
+  ack_t * new = (ack_t *) malloc(sizeof(ack_t));
   if (new == NULL){
     fprintf(stderr, "Erreur du malloc");
     return NULL;
@@ -76,7 +86,7 @@ pkt_t* pkt_ack_new(){
   new->length = 0;
   new->timestamp = 0;
   new->crc1 = 0;
-	return new;
+  return new;
 }
 
 
@@ -89,9 +99,7 @@ pkt_t* pkt_ack_new(){
  */
 void pkt_del(pkt_t *pkt)
 {
-	if(pkt_get_type(pkt) == PTYPE_DATA){
-    	free(pkt->payload);
-		}
+    free(pkt->payload);
     free(pkt);
 }
 
@@ -353,13 +361,15 @@ pkt_status_code pkt_set_crc2(pkt_t *pkt, const uint32_t crc2)
 pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t length)
 {
 	if (length > MAX_PAYLOAD_SIZE){
-    return E_LENGTH;
-  }
-  pkt->payload = realloc(pkt->payload, length);
+		return E_LENGTH;
+    }
+  
   memcpy(pkt->payload, data, length+1);
-	pkt->length = length;
+  
+  pkt->length = length;
   return PKT_OK;
 }
+
 
 /*
  * pkt_decode : Decode des donnees recues et cree une nouvelle structure pkt.
@@ -519,6 +529,95 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 
 }
 
+
+pkt_status_code ack_decode(uint8_t *data, const size_t len, ack_t *ack){
+
+	pkt_status_code err_code;
+
+  if (len < 12){ // Il n'y a pas de header car il est encode sur 12 bytes
+    return E_NOHEADER;
+  }
+	else if(len > 528){ // Le paquet est trop long
+		return E_UNCONSISTENT;
+	}
+
+	// Initialisation des variables
+	ptypes_t type;
+	uint8_t tr;
+	uint8_t window;
+	uint8_t seqnum;
+	uint16_t length;
+	uint32_t timestamp;
+	uint32_t crc1_recv;
+
+	// Premier byte : type, tr, window
+	uint8_t first_byte;
+	memcpy(&first_byte, data, 1);
+
+	type = first_byte>>6;
+	if(type != PTYPE_DATA && type != PTYPE_ACK && type != PTYPE_NACK){
+		fprintf(stderr, "Erreur type\n");
+		return E_TYPE;
+	}
+	tr = first_byte>>5 & 0b00000001;
+	if(tr != 1 && tr != 0){
+		fprintf(stderr, "Erreur tr\n");
+		return E_TR;
+	}
+	window = first_byte & 0b00011111;
+	if(window > 31 || window < 0){
+		fprintf(stderr, "Erreur window\n");
+		return E_WINDOW;
+	}
+
+	// Deuxième byte : seqnum
+	memcpy(&seqnum, data+1, 1);
+	if(seqnum < 0 || seqnum > 255){
+		fprintf(stderr, "Erreur seqnum\n");
+		return E_SEQNUM;
+	}
+
+	// 3e et 4e bytes : length
+	memcpy(&length, data+2, 2);
+	length = ntohs(length);
+	if(length < 0 || length > 512){
+		fprintf(stderr, "Erreur length\n");
+		return E_LENGTH;
+	}
+
+	// 5e -> 8e bytes : timestamp
+	memcpy(&timestamp, data+4, 4);
+	timestamp = ntohl(timestamp);
+
+	// 9e -> 12e bytes : CRC1
+	memcpy(&crc1_recv, data+8, 4);
+	crc1_recv = ntohl(crc1_recv);
+	// On vérifie si les deux CRC sont les mêmes
+	uint32_t crc1_check = crc32(0, (const Bytef *) data, 8);
+	if(crc1_recv != crc1_check){
+		fprintf(stderr, "Erreur CRC1\n");
+		return E_CRC;
+	}
+
+	// Encodage des valeurs dans la structure pkt
+
+	ack->type = type;
+
+	ack->tr = tr;
+
+	ack->window = window;
+
+	ack->length = length;
+
+	ack->timestamp = timestamp;
+
+	ack->crc1 = crc1_recv;
+
+	return PKT_OK;
+
+}
+
+
 /*
  * pkt_encode : Encode une struct pkt dans un buffer, pret a etre envoye sur le reseau
  * (c-a-d en network byte-order), incluant le CRC32 du header et
@@ -607,6 +706,75 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
 		printf("Calcul de CRC2 : %u\n", ntohl(crc2));
 	 	memcpy(buf+12+ntohs(length), &crc2, 4);
 	}
+
+	return PKT_OK;
+}
+
+
+pkt_status_code ack_encode(const ack_t* ack, uint8_t *buf, size_t len)
+ {
+
+  // Gerer le header
+  uint8_t window = ack->window;
+	if(window > 31 || window < 0){
+		fprintf(stderr, "Erreur window\n");
+		return E_WINDOW;
+	}
+  uint8_t type = ack->type;
+	if(type != PTYPE_DATA && type != PTYPE_ACK && type != PTYPE_NACK){
+		fprintf(stderr, "Erreur type\n");
+		return E_TYPE;
+	}
+  uint8_t tr = ack->tr;
+	if(tr != 0 && tr != 1){
+		fprintf(stderr, "Erreur tr\n");
+		return E_TR;
+	}
+  uint8_t seqnum = ack->seqnum;
+	if(seqnum < 0 || seqnum > 255){
+		fprintf(stderr, "Erreur seqnum\n");
+		return E_SEQNUM;
+	}
+  uint16_t length = ack->length; // 2 bytes
+	if(length < 0 || length > 512){
+		fprintf(stderr, "Erreur length\n");
+		return E_LENGTH;
+	}
+	uint32_t timestamp = htonl(ack->timestamp); // 4 bytes
+
+
+	// Teste si le buffer est trop petit
+	if(len < length+16){
+		fprintf(stderr, "Erreur nomem\n");
+		return E_NOMEM;
+	}
+
+	length = htons(length);
+
+	// Premier byte
+  uint8_t type_format = type<<6 & 0b00000011000000;
+	uint8_t tr_format = tr<<5 & 0b00000100000;
+	uint8_t window_format = window & 0b00011111;
+	uint8_t first_byte = type_format | tr_format | window_format;
+  memcpy(buf, &first_byte, 1);
+
+	// Deuxième byte
+	memcpy(buf+1, &seqnum, 1); // seqnum
+
+	// Troisième et quatrième bytes
+  memcpy(buf+2, &length, 2); // length
+
+	// Quatrième au huitième byte
+	memcpy(buf+4, &timestamp, 4); // timestamp
+
+  // Gerer les CRC
+  uint32_t crc1 = htonl(crc32(0, (const Bytef *) buf, 8));
+	printf("Calcul de CRC1 : %u\n", ntohl(crc1));
+  // Huitième au douzième byte : crc1
+	memcpy(buf+8, &crc1, 4);
+
+
+	printf("Type : %u\n", type);
 
 	return PKT_OK;
 }
@@ -930,7 +1098,7 @@ pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum){
 	 for(i = 0; i < MAX_WINDOW_SIZE; i++){
  		if(*(buffer+i) != NULL){
  			if(seqnum == pkt_get_seqnum(*(buffer+i))){
-				pkt_del(*(buffer+i));
+				//pkt_del(*(buffer+i));
 				*(buffer+i) = NULL;
 				return 0;
  			}
@@ -978,13 +1146,11 @@ int write_buffer(int fd, pkt_t **buffer, uint8_t *min_window, uint8_t *max_windo
 	 else{
 		 if(fd == STDOUT){
 			 printf("%s\n", pkt_get_payload(buffer[i]));
-			 pkt_del(buffer[i]);
 			 buffer[i] = NULL;
 			 decale_window(min_window, max_window);
 		 }
 		 else{
 			 write(fd, pkt_get_payload(buffer[i]), pkt_get_length(buffer[i]));
-			 pkt_del(buffer[i]);
 			 buffer[i] = NULL;
 			 decale_window(min_window, max_window);
 		 }

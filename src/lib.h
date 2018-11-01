@@ -21,6 +21,8 @@
 /* Raccourci pour struct pkt */
 typedef struct pkt pkt_t;
 
+typedef struct ack ack_t;
+
 /* Types de paquets */
 typedef enum {
 	PTYPE_DATA = 1,
@@ -70,7 +72,7 @@ pkt_t* pkt_new();
  *
  * @return : un nouveau paquet de type PTYPE_ACK ou NULL en cas d'erreur
  */
-pkt_t* pkt_ack_new();
+ack_t* ack_new();
 
 /*
  * pkt_del : Libere le pointeur vers la struct pkt, ainsi que toutes les
@@ -276,6 +278,8 @@ pkt_status_code pkt_set_payload(pkt_t* pkt, const char *data, const uint16_t len
  */
 pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len);
 
+pkt_status_code ack_encode(const ack_t* ack, uint8_t *buf, size_t len);
+
 /*
  * pkt_decode : Decode des donnees recues et cree une nouvelle structure pkt.
  * Le paquet recu est en network byte-order.
@@ -296,6 +300,8 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len);
  * l'erreur rencontree
  */
 pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt);
+
+pkt_status_code ack_decode(uint8_t *data, const size_t len, ack_t *ack);
 
 /*
  * real_address : Trouve le nom de la ressource correspondant à une adresse IPv6
