@@ -905,7 +905,8 @@ void decale_window(uint8_t *min_window, uint8_t *max_window){
  *           - NULL en cas d'erreur
  */
 pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum){
-	for(int i = 0; i < MAX_WINDOW_SIZE; i++){
+	int i;
+	for(i = 0; i < MAX_WINDOW_SIZE; i++){
 		if(*(buffer+i) != NULL){
 			if(seqnum == pkt_get_seqnum(*(buffer+i))){
 				return *(buffer+i);
@@ -925,7 +926,8 @@ pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum){
  * 					 - 1 si l'element n'a pas ete retire correctement
  */
  int retire_buffer(pkt_t ** buffer, uint8_t seqnum){
-	 for(int i = 0; i < MAX_WINDOW_SIZE; i++){
+	 int i;
+	 for(i = 0; i < MAX_WINDOW_SIZE; i++){
  		if(*(buffer+i) != NULL){
  			if(seqnum == pkt_get_seqnum(*(buffer+i))){
 				pkt_del(*(buffer+i));
@@ -947,7 +949,8 @@ pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum){
 	*  					- 0 si il reste au moins une place dans le buffer
   */
  int buffer_plein(pkt_t ** buffer){
-	 for(int i = 0; i < LENGTH_BUF_REC; i++){
+	 int i;
+	 for(i = 0; i < LENGTH_BUF_REC; i++){
 		 if (buffer[i] == NULL){
 			 return 0;
 		 }
