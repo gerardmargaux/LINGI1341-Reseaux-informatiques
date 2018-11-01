@@ -572,6 +572,7 @@ pkt_status_code ack_decode(uint8_t *data, const size_t len, ack_t *ack){
 
 	// Deuxième byte : seqnum
 	memcpy(&seqnum, data+1, 1);
+	printf("Seqnum : %u\n", seqnum);
 	if(seqnum < 0 || seqnum > 255){
 		fprintf(stderr, "Erreur seqnum\n");
 		return E_SEQNUM;
@@ -606,6 +607,8 @@ pkt_status_code ack_decode(uint8_t *data, const size_t len, ack_t *ack){
 	ack->tr = tr;
 
 	ack->window = window;
+	
+	ack->seqnum = seqnum;
 
 	ack->length = length;
 
