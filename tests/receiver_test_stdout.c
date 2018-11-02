@@ -70,12 +70,6 @@ int main(int argc, char *argv[]) {
   uint8_t max_window = min_window + MAX_WINDOW_SIZE;
   int err; // Variable pour error check
 
-  // Vérification du nombre d'arguments
-  err = arg_check(argc, 3, 5);
-  if(err == -1){
-    return -1;
-  }
-
   pkt_status_code err_code; // Variable pour error check avec les paquets
   int fd = STDOUT; // File descriptor avec lequel on va écrire les données
   int bytes_received = 1; // Nombre de bytes reçus du sender
@@ -140,41 +134,74 @@ int main(int argc, char *argv[]) {
     memset(&sender_addr, 0, sizeof(sender_addr));
     memset(&receiver_addr, 0, sizeof(receiver_addr));
 
+	// Réception des données
     uint8_t* data_received = (uint8_t*) malloc(528);
     bytes_received = recvfrom(sockfd, data_received, 528, 0, (struct sockaddr *) &sender_addr, &addr_len);
+    
     /*
-    if(strcmp((const char*) data_received,"") == 0){
-		printf("Fin de la réception de données\n");
+    if(strcmp((const char*) data_received, "") == 0){
 		break;
 	}
-	*/
+	*/ 
+		
+		
 	
     // Decodage du buffer recu sur le reseau
     const size_t len = 528;
 
     err_code = pkt_decode(data_received, len, packet_recv);
-    if (err_code != PKT_OK){
-      fprintf(stderr, "Erreur decode\n");
-      pkt_del(packet_recv);
-      close(sockfd);
-      close(fd);
-      return -1;
-    }
     
     free(data_received);
     
+    if (err_code != PKT_OK){
+      printf("Paquet ignoré\n");
+    }
+    else{
+    
     if(pkt_get_length(packet_recv) == 0){
-		printf("Fin de la réception de données\n");
-		break;
-	}
+		printf("Déconnexion...\n");
+		uint8_t seqnum_recv = pkt_get_seqnum(packet_recv);
+        
+        window = window - err;
+        packet_ack->seqnum = seqnum_recv+1;
+        packet_ack->window = window;
+		
+        uint8_t * buffer_encode = (uint8_t *)malloc(16*sizeof(uint8_t));
+        if (buffer_encode == NULL){
+          fprintf(stderr, "Erreur malloc : buffer_encode\n");
+          return -1;
+        }
 
-    // On regarde si le paquet reçu est dans la fenêtre de réception
+        size_t len_buffer_encode = 16;
+
+        // Encodage du paquet a envoyer sur le reseau
+        err_code =  ack_encode(packet_ack, buffer_encode, len_buffer_encode);
+        if(err_code != PKT_OK){
+          free(packet_ack);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+        
+        // Envoi du ack sur le reseau
+        bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, (struct sockaddr *) &sender_addr, addr_len);
+        if(bytes_sent < 0){
+          perror("Erreur send ack");
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+        
+        free(buffer_encode);
+        
+        break;
+        
+	}
+	
     uint8_t seqnum_recv = pkt_get_seqnum(packet_recv);
 
     // Teste si le numero de sequence est dans la fenetre
     int val = in_window(seqnum_recv, min_window, max_window);
-    printf("Seqnum du paquet reçu : %u\n", seqnum_recv);
-    printf("Dans la fenetre ? : %d\n", val);
 
     // Si le paquet reçu n'est pas dans la fenêtre de réception, on l'ignore
     if (val == -1){
@@ -235,7 +262,7 @@ int main(int argc, char *argv[]) {
               close(fd);
               return -1;
             }
-            window = window - err;
+           window = window - err;
             
            packet_ack->seqnum = seqnum_recv+1;
             
@@ -277,13 +304,7 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
-        printf("Paquet avec seqnum %u retiré du buffer\n", seqnum_recv);
 
-
-        printf("Min window : %u\n", min_window);
-        printf("Max window : %u\n", max_window);
-
-        printf("Fin de l'envoi du ack de seqnum %u\n", packet_ack->seqnum);
         free(buffer_encode);
         strcpy(packet_recv->payload, "");
         memset(packet_ack, 0, 12);
@@ -297,6 +318,7 @@ int main(int argc, char *argv[]) {
     }
   }
 }
+}
 
   pkt_del(packet_recv);
   free(packet_ack);
@@ -307,6 +329,8 @@ int main(int argc, char *argv[]) {
   if(fd != 1){
     close(fd);
   }
+  
+  printf("Fin de la transmission.\n");
   return 0;
 
 }

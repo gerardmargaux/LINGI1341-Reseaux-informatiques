@@ -67,12 +67,6 @@ int main(int argc, char *argv[]) {
 
   int err; // Variable pour error check
 
-  // Vérification du nombre d'arguments
-  err = arg_check(argc, 3, 5);
-  if(err == -1){
-    return -1;
-  }
-
   int fd = STDIN; // File descriptor avec lequel on va lire les données
   int bytes_read; // Nombre de bytes lus sur l'entrée standard / le fichier source
   int bytes_sent; // Nombre de bytes envoyés au receiver
@@ -84,6 +78,7 @@ int main(int argc, char *argv[]) {
   uint8_t max_window = min_window + MAX_WINDOW_SIZE;
 
   uint8_t seqnum = 0;
+
 
   char* hostname = "::1";
   printf("Hostname : %s\n", hostname);
@@ -115,13 +110,13 @@ int main(int argc, char *argv[]) {
 
   pkt_t* packet = pkt_new();
   if(packet == NULL){
-	  printf("Erreur de création du paquet \n");
+	  fprintf(stderr, "Erreur de création du paquet \n");
 	  return -1;
   }
   
   ack_t* ack_received = ack_new();
   if(ack_received == NULL){
-	  printf("Erreur de création du paquet d'acquittement \n");
+	  fprintf(stderr, "Erreur de création du paquet d'acquittement \n");
 	  return -1;
   }
 
@@ -157,13 +152,28 @@ int main(int argc, char *argv[]) {
     if(bytes_read == -1){
       perror("Erreur read");
       free(payload_buf);
+      free(ack_buffer);
       return -1;
     }
+    
+    // Déconnexion
     else if(bytes_read == 0){
+		
+		printf("Déconnexion...\n");
+		
+		//bytes_sent = sendto(sockfd, "", 1, 0, servinfo->ai_addr, servinfo->ai_addrlen);
+		
+		uint8_t seqnum_end = seqnum + 1;
+		
+		err_code = pkt_set_seqnum(packet, seqnum);
+		if(err_code != PKT_OK){
+      		fprintf(stderr, "Erreur set_seqnum\n");
+      		return -1;
+      	}
 		
 		err_code = pkt_set_length(packet, 0);
 		if(err_code != PKT_OK){
-      		fprintf(stderr, "Erreur set_payload\n");
+      		fprintf(stderr, "Erreur set_length\n");
       		return -1;
       	}
 		
@@ -173,8 +183,10 @@ int main(int argc, char *argv[]) {
           return -1;
         }
 
+		size_t len_buffer_encode = 528;
+
         // Encodage du paquet a envoyer sur le reseau
-      	err_code = pkt_encode(packet, buffer_encode, 528);
+      	err_code = pkt_encode(packet, buffer_encode, len_buffer_encode);
       	if(err_code != PKT_OK){
       		fprintf(stderr, "Erreur encode\n");
       		return -1;
@@ -182,12 +194,88 @@ int main(int argc, char *argv[]) {
       	
 		
 		bytes_sent = sendto(sockfd, (void*) buffer_encode, 528, 0, servinfo->ai_addr, servinfo->ai_addrlen);
+		
+		struct sockaddr_in6 receiver_addr;
+        memset(&receiver_addr, 0, sizeof(receiver_addr));
+        socklen_t addr_len = sizeof(struct sockaddr);
+        
+        
+        FD_ZERO(&readfds);
+        FD_SET(sockfd, &readfds);
+
+        tv.tv_sec = 4;
+        tv.tv_usec = 500000;
+	
+        sret = select(sockfd+1, &readfds, NULL, NULL, &tv);
+        while(1){
+		
+		//struct timeval * rto = (struct timeval *)malloc(sizeof(struct timeval)); 
+		
+        while(sret == 0){
+		  //gettimeofday (rto, NULL);
+		  //int temps_actuel = rto->tv_sec * 1000 + rto->tv_usec;
+		  //if (pkt_get_timestamp(packet) + tv.tv_sec * 1000 + tv.tv_usec < temps_actuel) {
+		
+          printf("Renvoi du paquet avec de déconnexion\n");
+          bytes_sent = sendto(sockfd, (void *) buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
+          if(bytes_sent == -1){
+            perror("Erreur sendto packet");
+            free(payload_buf);
+            pkt_del(packet);
+            close(sockfd);
+            close(fd);
+            return -1;
+          }
+          
+
+          FD_ZERO(&readfds);
+          FD_SET(sockfd, &readfds);
+
+          tv.tv_sec = 2;
+          tv.tv_usec = 500000;
+
+          sret = select(sockfd+1, &readfds, NULL, NULL, &tv);
+        }
+        //free(rto);
+        
+          bytes_received = recvfrom(sockfd, ack_buffer, 528, 0, (struct sockaddr *) &receiver_addr, &addr_len);
+          if(bytes_received < 0){
+            perror("Erreur receive ACK");
+            close(sockfd);
+            close(fd);
+            return -1;
+          }
+         
+
+        err_code = ack_decode(ack_buffer, 12, ack_received);
+        if(err_code != PKT_OK){
+          fprintf(stderr, "Erreur decode\n");
+          free(ack_received);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+        
+        printf("Seqnum de déconnexion : %u\n", seqnum_end);
+        printf("Seqnum du paquet de déconnexion : %u\n", ack_received->seqnum);
+        if(ack_received->seqnum == seqnum_end){
+			printf("Reçu ACK de déconnexion.\n");
+			break;
+		}
+		
+		}
+		
+		
 		free(ack_buffer);
 		free(payload_buf);
 		free(buffer_encode);
-		printf("Fin de l'envoi de données.\n");
+		
 		break;
-    }
+		
+	
+	}
+	
+	// Lecture de données
     else{
 
       if(fd == STDIN){ // Remplacement du caractère de linefeed par le caractère de fin de string
@@ -202,7 +290,7 @@ int main(int argc, char *argv[]) {
       if(*payload_buf != '\0'){ // Si on a effectivement écrit quelque chose
         err_code = pkt_set_payload(packet, payload_buf, strlen(payload_buf));
         if (err_code == -1){
-			printf("Erreur set payload dans la boucle \n");
+			fprintf(stderr, "Erreur set payload dans la boucle \n");
 			return -1;
 		}
 		
@@ -265,7 +353,6 @@ int main(int argc, char *argv[]) {
       		return -1;
       	}
 
-        printf("Fin de l'envoi du packet\n");
 
         struct sockaddr_in6 receiver_addr;
         memset(&receiver_addr, 0, sizeof(receiver_addr));
@@ -279,8 +366,14 @@ int main(int argc, char *argv[]) {
 	
         sret = select(sockfd+1, &readfds, NULL, NULL, &tv);
         while(1){
-
+		
+		//struct timeval * rto = (struct timeval *)malloc(sizeof(struct timeval)); 
+		
         while(sret == 0){
+		  //gettimeofday (rto, NULL);
+		  //int temps_actuel = rto->tv_sec * 1000 + rto->tv_usec;
+		  //if (pkt_get_timestamp(packet) + tv.tv_sec * 1000 + tv.tv_usec < temps_actuel) {
+		
           printf("Renvoi du paquet avec numéro de séquence %u\n", pkt_get_seqnum(packet));
           bytes_sent = sendto(sockfd, (void *) buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
           if(bytes_sent == -1){
@@ -301,6 +394,7 @@ int main(int argc, char *argv[]) {
 
           sret = select(sockfd+1, &readfds, NULL, NULL, &tv);
         }
+        //free(rto);
         
           bytes_received = recvfrom(sockfd, ack_buffer, 528, 0, (struct sockaddr *) &receiver_addr, &addr_len);
           if(bytes_received < 0){
@@ -319,15 +413,14 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
+        
         if(ack_received->type == PTYPE_ACK){
 		
-        printf("Reçu ACK avec seqnum %d\n", ack_received->seqnum);
         // On retire les paquets du buffer d'envoi
         uint8_t seqnum_ack_received = ack_received->seqnum;
           int i;
 		  for(i = min_window; i <= seqnum_ack_received-1; i++){
             int err_retire_buffer = retire_buffer(buffer_envoi, i);
-            printf("Packet %u retiré du buffer d'envoi\n", i);
             if (err_retire_buffer == -1){
               fprintf(stderr, "Erreur retire buffer\n");
               free(ack_received);
@@ -335,16 +428,12 @@ int main(int argc, char *argv[]) {
               close(fd);
               return -1;
             }
-        window++;
-        printf("Window : %u\n", window);
-        decale_window(&min_window, &max_window);
-        printf("Min Window : %u\n", min_window);
-        printf("Max Window : %u\n", max_window);
-        }
+          window++;
+          decale_window(&min_window, &max_window);
+		  }
         break;
-      }
+		}
       else {
-        fprintf(stderr, "Le paquet reçu est de type NACK\n");
         uint8_t seqnum = ack_received->seqnum;
         pkt_t* packet_renvoi = get_from_buffer(buffer_envoi, seqnum);
         uint8_t * buffer_encode2 = (uint8_t *)malloc(528);
@@ -393,7 +482,8 @@ int main(int argc, char *argv[]) {
       	
         free(buffer_encode2);
       }
-    }	
+
+	}
         err = pkt_set_type(packet, PTYPE_DATA);
         memset(ack_received, 0, 12);
         packet->crc1 = 0;
@@ -403,8 +493,9 @@ int main(int argc, char *argv[]) {
 		packet->length = 1;
 		strcpy(packet->payload, "");
         ack_received->type = PTYPE_ACK;
+
       }
-    }
+	}
   }
 	
   free(ack_received);
@@ -417,5 +508,7 @@ int main(int argc, char *argv[]) {
   if(fd != 0){
     close(fd);
   }
+  
+  printf("Fin de la transmission.\n");
   return 0;
 }

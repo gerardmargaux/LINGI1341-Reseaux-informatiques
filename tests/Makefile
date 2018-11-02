@@ -1,4 +1,4 @@
-main: clean lib test_link sender_test_stdin receiver_test_stdout sender_test_fichier receiver_test_fichier
+main: clean lib sender_test_stdin receiver_test_stdout sender_test_fichier receiver_test_fichier test_link
 
 test_link:
 	./link_sim -p 12345 -P 1236 & ../receiver :: 1236
