@@ -1,3 +1,12 @@
+commit 06ba86a0112247221b8a38084ba0b7071036054b
+Author: Margaux <gerardmarg@yoda.info.ucl.ac.be>
+Date:   Fri Nov 2 10:04:17 2018 +0100
+
+    Ajouté gitlog.stat
+
+ gitlog.stat | 1733 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 1733 insertions(+)
+
 commit f786fd4995fa657f70c841223e81e8e678d5c14c
 Author: Margaux <gerardmarg@yoda.info.ucl.ac.be>
 Date:   Fri Nov 2 10:02:59 2018 +0100

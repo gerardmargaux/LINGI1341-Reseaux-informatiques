@@ -26,5 +26,5 @@ linksim:
 clean:
 	@rm -f *.o sender receiver test && clear && cd src && rm -f *.a *.o && cd ../tests && $(MAKE) clean
 
-tests:
+tests: clean lib sender receiver
 	@cd tests && $(MAKE)

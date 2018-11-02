@@ -429,6 +429,7 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 	
 	if(tr == 1){
 		first_byte = first_byte & 0b11011111;
+		memcpy(data, &first_byte, 1);
 	}
 
 	type = first_byte>>6;
@@ -689,25 +690,24 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
 	length = htons(length);
 
 	// Premier byte
-  uint8_t type_format = type<<6 & 0b00000011000000;
+	uint8_t type_format = type<<6 & 0b00000011000000;
 	uint8_t tr_format = tr<<5 & 0b00000100000;
 	uint8_t window_format = window & 0b00011111;
 	uint8_t first_byte = type_format | tr_format | window_format;
-  memcpy(buf, &first_byte, 1);
+	memcpy(buf, &first_byte, 1);
 
 	// Deuxième byte
 	memcpy(buf+1, &seqnum, 1); // seqnum
 
 	// Troisième et quatrième bytes
-  memcpy(buf+2, &length, 2); // length
+	memcpy(buf+2, &length, 2); // length
 
 	// Quatrième au huitième byte
 	memcpy(buf+4, &timestamp, 4); // timestamp
 
-  // Gerer les CRC
-  uint32_t crc1 = htonl(crc32(0, (const Bytef *) buf, 8));
-	printf("Calcul de CRC1 : %u\n", ntohl(crc1));
-  // Huitième au douzième byte : crc1
+	// Gerer les CRC
+	uint32_t crc1 = htonl(crc32(0, (const Bytef *) buf, 8));
+	// Huitième au douzième byte : crc1
 	memcpy(buf+8, &crc1, 4);
 
 
@@ -720,7 +720,6 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
 		
 
 		uint32_t crc2 = htonl(crc32(0, (const Bytef *) buf+12, ntohs(length))); // Calcul du crc2
-		printf("Calcul de CRC2 : %u\n", ntohl(crc2));
 	 	memcpy(buf+12+ntohs(length), &crc2, 4);
 	}
 
@@ -786,7 +785,6 @@ pkt_status_code ack_encode(const ack_t* ack, uint8_t *buf, size_t len)
 
   // Gerer les CRC
   uint32_t crc1 = htonl(crc32(0, (const Bytef *) buf, 8));
-	printf("Calcul de CRC1 : %u\n", ntohl(crc1));
   // Huitième au douzième byte : crc1
 	memcpy(buf+8, &crc1, 4);
 
@@ -1065,12 +1063,10 @@ void decale_window(uint8_t *min_window, uint8_t *max_window){
  	int i;
  	if(min_window <= pkt_get_seqnum(pkt)){
  		i = pkt_get_seqnum(pkt) - min_window;
- 		printf("Place à laquelle le paquet est mis dans le buffer : %d\n", i);
  		*(buffer_recept + i) = pkt;
  	}
  	else{
  		i = (255-min_window+1+pkt_get_seqnum(pkt));
- 		printf("Place à laquelle le paquet est mis dans le buffer : %d\n", i);
  		*(buffer_recept + i) = pkt;
  	}
  }
@@ -1111,7 +1107,6 @@ pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum){
 	 for(i = 0; i < MAX_WINDOW_SIZE; i++){
  		if(*(buffer+i) != NULL){
  			if(seqnum == pkt_get_seqnum(*(buffer+i))){
-				//pkt_del(*(buffer+i));
 				*(buffer+i) = NULL;
 				return 0;
  			}
