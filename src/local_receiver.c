@@ -168,7 +168,7 @@ int main(int argc, char *argv[]) {
 		break;
 	}
 	*/
-
+	
     // Decodage du buffer recu sur le reseau
     const size_t len = 528;
 
@@ -180,6 +180,8 @@ int main(int argc, char *argv[]) {
       close(fd);
       return -1;
     }
+    
+    free(data_received);
     
     if(pkt_get_length(packet_recv) == 0){
 		printf("Fin de la réception de données\n");
@@ -200,27 +202,26 @@ int main(int argc, char *argv[]) {
     }
     else{
 
-    printf("Seqnum du paquet reçu : %u\n", seqnum_recv);
-
     // Si le paquet recu est tronque
     // On renvoie un paquet de type NACK au sender
     if (pkt_get_tr(packet_recv) == 1){
-
-        ack_t * packet_nack = ack_new();
-
+		
+		printf("Paquet tronqué !\n");
+		
+		ack_t * packet_nack = ack_new();
+		packet_nack->type = PTYPE_NACK;
+		packet_nack->tr = 0;
+		packet_nack->window = window;
         packet_nack->seqnum = seqnum_recv;
+        packet_nack->length = 0;
 
-        packet_nack->type = PTYPE_NACK;
-
-        packet_nack->window = window;
-
-        uint8_t * buffer_encode = (uint8_t *)malloc(528*sizeof(uint8_t));
+        uint8_t * buffer_encode = (uint8_t *)malloc(12*sizeof(uint8_t));
         if (buffer_encode == NULL){
           fprintf(stderr, "Erreur malloc : buffer_encode\n");
           return -1;
         }
 
-        size_t len_buffer_encode = sizeof(buffer_encode);
+        size_t len_buffer_encode = 12;
 
         // Encodage du paquet a envoyer sur le reseau
         int return_code =  ack_encode(packet_nack, buffer_encode, len_buffer_encode);
@@ -242,13 +243,9 @@ int main(int argc, char *argv[]) {
       }
 
       else { // Si le paquet recu n'est pas tronque
-
-			
-          printf("Test packet 5 : %s\n", packet_recv->payload);
           
           // Ajout du buffer au buffer de reception
           if(buffer_plein(buffer_recept) == 0){
-            printf("Seqnum : %u\n", pkt_get_seqnum(packet_recv));
             ajout_buffer(packet_recv, buffer_recept, min_window);
             window--;
             err = write_buffer(fd, buffer_recept, &min_window, &max_window);
@@ -258,10 +255,9 @@ int main(int argc, char *argv[]) {
               close(fd);
               return -1;
             }
-            printf("Données écrites : %d\n", err);
             window = window - err;
             
-           packet_ack->seqnum = seqnum_recv;
+           packet_ack->seqnum = seqnum_recv+1;
             
 
           packet_ack->window = window;
@@ -301,17 +297,15 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
-        printf("Paquet avec seqnum %u retiré du buffer\n", packet_ack->seqnum);
+        printf("Paquet avec seqnum %u retiré du buffer\n", seqnum_recv);
 
 
         printf("Min window : %u\n", min_window);
         printf("Max window : %u\n", max_window);
 
-        printf("Fin de l'envoi du ack\n");
-        //printf("Objet data_received : %p \n", data_received);
-        //printf("Objet buffer_encode : %p \n", buffer_encode);
-        free(data_received);
+        printf("Fin de l'envoi du ack de seqnum %u\n", packet_ack->seqnum);
         free(buffer_encode);
+        strcpy(packet_recv->payload, "");
         memset(packet_ack, 0, 12);
         packet_ack->type = PTYPE_ACK;
       }

@@ -13,7 +13,10 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <math.h>
+#include <inttypes.h>
 #include <ctype.h>
+#include <time.h>
 #include <zlib.h>
 
 // Definition de la structure d'un paquet
@@ -312,9 +315,13 @@ pkt_status_code pkt_set_length(pkt_t *pkt, const uint16_t length)
  * @return : Un code indiquant si l'operation a reussi ou representant
  * l'erreur rencontree
  */
-pkt_status_code pkt_set_timestamp(pkt_t *pkt, const uint32_t timestamp)
+pkt_status_code pkt_set_timestamp(pkt_t *pkt)
 {
-	pkt->timestamp = timestamp;
+	struct timeval * tv = (struct timeval *)malloc(sizeof(struct timeval)); 
+	gettimeofday (tv, NULL);
+	int temps_actuel = tv->tv_sec * 1000 + tv->tv_usec;
+	pkt->timestamp = temps_actuel;
+	free(tv);
   return PKT_OK;
 }
 
@@ -448,15 +455,27 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 	// 5e -> 8e bytes : timestamp
 	memcpy(&timestamp, data+4, 4);
 	timestamp = ntohl(timestamp);
-
-	// 9e -> 12e bytes : CRC1
-	memcpy(&crc1_recv, data+8, 4);
-	crc1_recv = ntohl(crc1_recv);
-	// On vérifie si les deux CRC sont les mêmes
-	uint32_t crc1_check = crc32(0, (const Bytef *) data, 8);
-	if(crc1_recv != crc1_check){
-		fprintf(stderr, "Erreur CRC1\n");
-		return E_CRC;
+	
+	if (tr == 1){ // Si le paquet est tronque 
+		err_code = pkt_set_crc1(pkt, 0);
+		if(err_code != PKT_OK){
+			return E_CRC;
+		}
+	}
+	else { // Le paquet n'est pas tronqué
+		// 9e -> 12e bytes : CRC1
+		memcpy(&crc1_recv, data+8, 4);
+		crc1_recv = ntohl(crc1_recv);
+		// On vérifie si les deux CRC sont les mêmes
+		uint32_t crc1_check = crc32(0, (const Bytef *) data, 8);
+		if(crc1_recv != crc1_check){
+			fprintf(stderr, "Erreur CRC1\n");
+			return E_CRC;
+		}
+		err_code = pkt_set_crc1(pkt, crc1_recv);
+		if(err_code != PKT_OK){
+			return E_CRC;
+		}
 	}
 
 	// Encodage des valeurs dans la structure pkt
@@ -485,12 +504,9 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 	if(err_code != PKT_OK){
 		return E_LENGTH;
 	}
+	err_code = pkt_set_timestamp(pkt);
 
-	err_code = pkt_set_timestamp(pkt, timestamp);
-
-	err_code = pkt_set_crc1(pkt, crc1_recv);
-
-	if(type == PTYPE_DATA){
+	if(type == PTYPE_DATA && tr == 0){
 
 		uint32_t crc2_recv;
 		char * payload = (char *) malloc(512*sizeof(char));
@@ -499,8 +515,10 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 			return E_NOMEM;
 		}
 
+		
 		// Payload
-		memcpy(payload, data+12, length);
+		strcpy(payload, (const char*) data+12);
+		*(payload+length) = '\0';
 
 		// CRC2
 		memcpy(&crc2_recv, data+12+length, 4);
@@ -521,6 +539,7 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 		}
 
 		err_code = pkt_set_crc2(pkt, crc2_recv);
+		free(payload);
 
 	}
 
@@ -531,8 +550,6 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 
 
 pkt_status_code ack_decode(uint8_t *data, const size_t len, ack_t *ack){
-
-	pkt_status_code err_code;
 
   if (len < 12){ // Il n'y a pas de header car il est encode sur 12 bytes
     return E_NOHEADER;
@@ -572,7 +589,6 @@ pkt_status_code ack_decode(uint8_t *data, const size_t len, ack_t *ack){
 
 	// Deuxième byte : seqnum
 	memcpy(&seqnum, data+1, 1);
-	printf("Seqnum : %u\n", seqnum);
 	if(seqnum < 0 || seqnum > 255){
 		fprintf(stderr, "Erreur seqnum\n");
 		return E_SEQNUM;
@@ -666,7 +682,7 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
 
 
 	// Teste si le buffer est trop petit
-	if(len < length+16){
+	if(len < 528){
 		fprintf(stderr, "Erreur nomem\n");
 		return E_NOMEM;
 	}
@@ -696,14 +712,13 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
 	memcpy(buf+8, &crc1, 4);
 
 
-	printf("Type : %u\n", type);
 	// Si le paquet n'est pas tronqué
 	if(tr == 0 && type == PTYPE_DATA){
 
 		const char* payload = pkt_get_payload(pkt); // up to 512 bytes
-		printf("Payload avant encodage : %s\n", payload);
 
-  	memcpy(buf+12, payload, ntohs(length)); // 12e -> 524e byte : payload
+		memcpy(buf+12, payload, ntohs(length)); // 12e -> 524e byte : payload
+		
 
 		uint32_t crc2 = htonl(crc32(0, (const Bytef *) buf+12, ntohs(length))); // Calcul du crc2
 		printf("Calcul de CRC2 : %u\n", ntohl(crc2));
@@ -747,7 +762,7 @@ pkt_status_code ack_encode(const ack_t* ack, uint8_t *buf, size_t len)
 
 
 	// Teste si le buffer est trop petit
-	if(len < length+16){
+	if(len < 12){
 		fprintf(stderr, "Erreur nomem\n");
 		return E_NOMEM;
 	}
@@ -776,8 +791,6 @@ pkt_status_code ack_encode(const ack_t* ack, uint8_t *buf, size_t len)
   // Huitième au douzième byte : crc1
 	memcpy(buf+8, &crc1, 4);
 
-
-	printf("Type : %u\n", type);
 
 	return PKT_OK;
 }
@@ -1051,8 +1064,6 @@ void decale_window(uint8_t *min_window, uint8_t *max_window){
  */
  void ajout_buffer (pkt_t* pkt, pkt_t** buffer_recept, uint8_t min_window){
  	int i;
- 	printf("Min window : %u\n", min_window);
- 	printf("Seqnum : %u\n", pkt_get_seqnum(pkt));
  	if(min_window <= pkt_get_seqnum(pkt)){
  		i = pkt_get_seqnum(pkt) - min_window;
  		printf("Place à laquelle le paquet est mis dans le buffer : %d\n", i);
@@ -1148,6 +1159,7 @@ int write_buffer(int fd, pkt_t **buffer, uint8_t *min_window, uint8_t *max_windo
 	 }
 	 else{
 		 if(fd == STDOUT){
+			 printf("Données reçues :\n");
 			 printf("%s\n", pkt_get_payload(buffer[i]));
 			 buffer[i] = NULL;
 			 decale_window(min_window, max_window);

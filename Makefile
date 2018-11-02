@@ -1,4 +1,4 @@
-main: clean lib sender receiver
+main: clean lib sender receiver linksim
 
 sender: local_sender.o
 	@gcc -Wall -g -o $@ src/local_sender.o src/lib.a -lz
@@ -17,6 +17,9 @@ lib: lib.o
 
 lib.o:
 	@gcc -Wall -o src/lib.o -c src/lib.c
+
+linksim:
+	@cd linksim && $(MAKE)
 
 .PHONY: clean tests
 
