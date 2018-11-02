@@ -1,4 +1,4 @@
-main: clean lib sender_test_stdin receiver_test_stdout sender_test_fichier receiver_test_fichier
+main: lib sender_test_stdin receiver_test_stdout sender_test_fichier receiver_test_fichier
 
 test_link:
 	./link_sim -p 12345 -P 1236 & ../receiver :: 1236
@@ -33,13 +33,7 @@ lib: lib.o
 lib.o:
 	@gcc -Wall -o lib.o -c lib.c -lz
 
-test: clean lib test.o
-	@gcc -Wall -o $@ test.o lib.a -lz
-
-test.o:
-	@gcc -Wall -o test.o -c test.c -lz
-
-.PHONY: tests
+.PHONY:
 
 clean:
 	@rm -f *.o *.a sender_test_fichier sender_test_stdin receiver_test_fichier receiver_test_stdout && clear

@@ -1,4 +1,4 @@
-main: clean lib sender receiver linksim
+main: lib sender receiver
 
 sender: sender.o
 	@gcc -Wall -g -o $@ src/sender.o src/lib.a -lz
@@ -26,5 +26,5 @@ linksim:
 clean:
 	@rm -f *.o sender receiver test && clear && cd src && rm -f *.a *.o && cd ../tests && $(MAKE) clean
 
-tests: clean lib sender receiver
+tests: lib sender receiver
 	@cd tests && $(MAKE)
