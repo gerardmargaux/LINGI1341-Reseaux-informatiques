@@ -1,0 +1,32 @@
+Bonjour, ceci est un fichier test.
+Bla bla bla.
+
+Le texte en lui-même n'a aucun intérêt, il s'agit juste de tester les programmes.
+
+
+Pour ce faire, le fichier contient plus de 512 caractères.
+
+Cela permet de voir si le programme divise bien le texte en 2 pour l'envoi.
+
+
+Bla bla Bla
+
+En effet, le payload ne peut pas contenir plus de 512 caractères.
+
+Blah blah blah.
+
+Wow il y a déjà 400 caractères !
+
+Encore un peu et on arrivera à 512.
+
+Blah blah blah
+
+Ce projet n'était pas facile quand même.
+
+
+Et voilà !
+Les 512 caractères on été dépassés !
+
+Testons donc le programme...
+
+Normalement, l'output doit être coupé en 2.
