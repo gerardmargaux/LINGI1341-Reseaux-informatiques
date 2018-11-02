@@ -317,7 +317,7 @@ pkt_status_code pkt_set_length(pkt_t *pkt, const uint16_t length)
  */
 pkt_status_code pkt_set_timestamp(pkt_t *pkt)
 {
-	struct timeval * tv = (struct timeval *)malloc(sizeof(struct timeval)); 
+	struct timeval * tv = (struct timeval *)malloc(sizeof(struct timeval));
 	gettimeofday (tv, NULL);
 	int temps_actuel = tv->tv_sec * 1000 + tv->tv_usec;
 	pkt->timestamp = temps_actuel;
@@ -370,9 +370,9 @@ pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t len
 	if (length > MAX_PAYLOAD_SIZE){
 		return E_LENGTH;
     }
-  
+
   memcpy(pkt->payload, data, length+1);
-  
+
   pkt->length = length;
   return PKT_OK;
 }
@@ -420,13 +420,13 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 	// Premier byte : type, tr, window
 	uint8_t first_byte;
 	memcpy(&first_byte, data, 1);
-	
+
 	tr = first_byte>>5 & 0b00000001;
 	if(tr != 1 && tr != 0){
 		fprintf(stderr, "Erreur tr\n");
 		return E_TR;
 	}
-	
+
 	if(tr == 1){
 		first_byte = first_byte & 0b11011111;
 	}
@@ -436,7 +436,7 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 		fprintf(stderr, "Erreur type\n");
 		return E_TYPE;
 	}
-	
+
 	window = first_byte & 0b00011111;
 	if(window > 31 || window < 0){
 		fprintf(stderr, "Erreur window\n");
@@ -461,8 +461,8 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 	// 5e -> 8e bytes : timestamp
 	memcpy(&timestamp, data+4, 4);
 	timestamp = ntohl(timestamp);
-	
-	
+
+
 	// 9e -> 12e bytes : CRC1
 	memcpy(&crc1_recv, data+8, 4);
 	crc1_recv = ntohl(crc1_recv);
@@ -514,7 +514,7 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 			return E_NOMEM;
 		}
 
-		
+
 		// Payload
 		strcpy(payload, (const char*) data+12);
 		*(payload+length) = '\0';
@@ -622,7 +622,7 @@ pkt_status_code ack_decode(uint8_t *data, const size_t len, ack_t *ack){
 	ack->tr = tr;
 
 	ack->window = window;
-	
+
 	ack->seqnum = seqnum;
 
 	ack->length = length;
@@ -706,7 +706,6 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
 
   // Gerer les CRC
   uint32_t crc1 = htonl(crc32(0, (const Bytef *) buf, 8));
-	printf("Calcul de CRC1 : %u\n", ntohl(crc1));
   // Huitième au douzième byte : crc1
 	memcpy(buf+8, &crc1, 4);
 
@@ -717,10 +716,9 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
 		const char* payload = pkt_get_payload(pkt); // up to 512 bytes
 
 		memcpy(buf+12, payload, ntohs(length)); // 12e -> 524e byte : payload
-		
+
 
 		uint32_t crc2 = htonl(crc32(0, (const Bytef *) buf+12, ntohs(length))); // Calcul du crc2
-		printf("Calcul de CRC2 : %u\n", ntohl(crc2));
 	 	memcpy(buf+12+ntohs(length), &crc2, 4);
 	}
 
@@ -786,7 +784,6 @@ pkt_status_code ack_encode(const ack_t* ack, uint8_t *buf, size_t len)
 
   // Gerer les CRC
   uint32_t crc1 = htonl(crc32(0, (const Bytef *) buf, 8));
-	printf("Calcul de CRC1 : %u\n", ntohl(crc1));
   // Huitième au douzième byte : crc1
 	memcpy(buf+8, &crc1, 4);
 
@@ -1065,12 +1062,10 @@ void decale_window(uint8_t *min_window, uint8_t *max_window){
  	int i;
  	if(min_window <= pkt_get_seqnum(pkt)){
  		i = pkt_get_seqnum(pkt) - min_window;
- 		printf("Place à laquelle le paquet est mis dans le buffer : %d\n", i);
  		*(buffer_recept + i) = pkt;
  	}
  	else{
  		i = (255-min_window+1+pkt_get_seqnum(pkt));
- 		printf("Place à laquelle le paquet est mis dans le buffer : %d\n", i);
  		*(buffer_recept + i) = pkt;
  	}
  }

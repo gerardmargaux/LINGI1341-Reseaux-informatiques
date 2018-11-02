@@ -111,6 +111,9 @@ int main(int argc, char *argv[]) {
       printf("Port : %s\n", port);
     }
   }
+  if(fd == STDIN){
+    printf("Lecture sur l'entrée standard.\n");
+  }
 
   // Création du socket
   int sockfd; // Variable qui va contenir le file descriptor du socket
@@ -242,7 +245,7 @@ int main(int argc, char *argv[]) {
 		  //int temps_actuel = rto->tv_sec * 1000 + rto->tv_usec;
 		  //if (pkt_get_timestamp(packet) + tv.tv_sec * 1000 + tv.tv_usec < temps_actuel) {
 
-          printf("Renvoi du paquet avec de déconnexion\n");
+          printf("Renvoi du paquet de déconnexion\n");
           bytes_sent = sendto(sockfd, (void *) buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
           if(bytes_sent == -1){
             perror("Erreur sendto packet");

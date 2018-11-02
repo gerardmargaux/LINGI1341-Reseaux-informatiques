@@ -118,6 +118,9 @@ int main(int argc, char *argv[]) {
       printf("Port : %s\n", port);
     }
   }
+  if(fd == STDOUT){
+    printf("Ecriture sur la sortie standard.\n");
+  }
 
   // Création du socket
   int sockfd; // Variable qui va contenir le file descriptor du socket
@@ -163,35 +166,35 @@ int main(int argc, char *argv[]) {
 	// Réception des données
     uint8_t* data_received = (uint8_t*) malloc(528);
     bytes_received = recvfrom(sockfd, data_received, 528, 0, (struct sockaddr *) &sender_addr, &addr_len);
-    
+
     /*
     if(strcmp((const char*) data_received, "") == 0){
 		break;
 	}
-	*/ 
-		
-		
-	
+	*/
+
+
+
     // Decodage du buffer recu sur le reseau
     const size_t len = 528;
 
     err_code = pkt_decode(data_received, len, packet_recv);
-    
+
     free(data_received);
-    
+
     if (err_code != PKT_OK){
       printf("Paquet ignoré\n");
     }
     else{
-    
+
     if(pkt_get_length(packet_recv) == 0){
 		printf("Déconnexion...\n");
 		uint8_t seqnum_recv = pkt_get_seqnum(packet_recv);
-        
+
         window = window - err;
         packet_ack->seqnum = seqnum_recv+1;
         packet_ack->window = window;
-		
+
         uint8_t * buffer_encode = (uint8_t *)malloc(16*sizeof(uint8_t));
         if (buffer_encode == NULL){
           fprintf(stderr, "Erreur malloc : buffer_encode\n");
@@ -208,7 +211,7 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
-        
+
         // Envoi du ack sur le reseau
         bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, (struct sockaddr *) &sender_addr, addr_len);
         if(bytes_sent < 0){
@@ -217,13 +220,13 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
-        
+
         free(buffer_encode);
-        
+
         break;
-        
+
 	}
-	
+
     uint8_t seqnum_recv = pkt_get_seqnum(packet_recv);
 
     // Teste si le numero de sequence est dans la fenetre
@@ -238,9 +241,9 @@ int main(int argc, char *argv[]) {
     // Si le paquet recu est tronque
     // On renvoie un paquet de type NACK au sender
     if (pkt_get_tr(packet_recv) == 1){
-		
+
 		printf("Paquet tronqué !\n");
-		
+
 		ack_t * packet_nack = ack_new();
 		packet_nack->type = PTYPE_NACK;
 		packet_nack->tr = 0;
@@ -276,7 +279,7 @@ int main(int argc, char *argv[]) {
       }
 
       else { // Si le paquet recu n'est pas tronque
-          
+
           // Ajout du buffer au buffer de reception
           if(buffer_plein(buffer_recept) == 0){
             ajout_buffer(packet_recv, buffer_recept, min_window);
@@ -289,13 +292,13 @@ int main(int argc, char *argv[]) {
               return -1;
             }
            window = window - err;
-            
+
            packet_ack->seqnum = seqnum_recv+1;
-            
+
 
           packet_ack->window = window;
 
-		
+
         uint8_t * buffer_encode = (uint8_t *)malloc(16*sizeof(uint8_t));
         if (buffer_encode == NULL){
           fprintf(stderr, "Erreur malloc : buffer_encode\n");
@@ -312,7 +315,7 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
-        
+
         // Envoi du ack sur le reseau
         bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, (struct sockaddr *) &sender_addr, addr_len);
         if(bytes_sent < 0){
@@ -355,7 +358,7 @@ int main(int argc, char *argv[]) {
   if(fd != 1){
     close(fd);
   }
-  
+
   printf("Fin de la transmission.\n");
   return 0;
 
