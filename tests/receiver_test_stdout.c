@@ -3,10 +3,10 @@
 // @Date : 22 octobre 2018
 
 /*
- * Receiver : programme qui reçoit des paquets de données depuis le réseau et
- *            répond par un acknowledgement au sender.
- *
- */
+* Receiver : programme qui reçoit des paquets de données depuis le réseau et
+*            répond par un acknowledgement au sender.
+*
+*/
 
 #include "lib.h"
 #include <stdlib.h>
@@ -59,9 +59,9 @@ struct __attribute__((__packed__)) ack {
 
 
 /*
- * main : Fonction principale
- *
- */
+* main : Fonction principale
+*
+*/
 int main(int argc, char *argv[]) {
 
 
@@ -134,69 +134,69 @@ int main(int argc, char *argv[]) {
     memset(&sender_addr, 0, sizeof(sender_addr));
     memset(&receiver_addr, 0, sizeof(receiver_addr));
 
-	// Réception des données
+    // Réception des données
     uint8_t* data_received = (uint8_t*) malloc(528);
     bytes_received = recvfrom(sockfd, data_received, 528, 0, (struct sockaddr *) &sender_addr, &addr_len);
 
     /*
     if(strcmp((const char*) data_received, "") == 0){
-		break;
-	}
-	*/
+    break;
+  }
+  */
 
 
 
-    // Decodage du buffer recu sur le reseau
-    const size_t len = 528;
+  // Decodage du buffer recu sur le reseau
+  const size_t len = 528;
 
-    err_code = pkt_decode(data_received, len, packet_recv);
+  err_code = pkt_decode(data_received, len, packet_recv);
 
-    free(data_received);
+  free(data_received);
 
-    if (err_code != PKT_OK){
-      printf("Paquet ignoré\n");
-    }
-    else{
+  if (err_code != PKT_OK){
+    printf("Paquet ignoré\n");
+  }
+  else{
 
     if(pkt_get_length(packet_recv) == 0){
-		printf("Déconnexion...\n");
-		uint8_t seqnum_recv = pkt_get_seqnum(packet_recv);
+      printf("Déconnexion...\n");
+      uint8_t seqnum_recv = pkt_get_seqnum(packet_recv);
 
-        window = window - err;
-        packet_ack->seqnum = seqnum_recv+1;
-        packet_ack->window = window;
+      window = window - err;
+      packet_ack->seqnum = seqnum_recv+1;
+      packet_ack->window = window;
 
-        uint8_t * buffer_encode = (uint8_t *)malloc(16*sizeof(uint8_t));
-        if (buffer_encode == NULL){
-          fprintf(stderr, "Erreur malloc : buffer_encode\n");
-          return -1;
-        }
+      uint8_t * buffer_encode = (uint8_t *)malloc(16*sizeof(uint8_t));
+      if (buffer_encode == NULL){
+        fprintf(stderr, "Erreur malloc : buffer_encode\n");
+        return -1;
+      }
 
-        size_t len_buffer_encode = 16;
+      size_t len_buffer_encode = 16;
 
-        // Encodage du paquet a envoyer sur le reseau
-        err_code =  ack_encode(packet_ack, buffer_encode, len_buffer_encode);
-        if(err_code != PKT_OK){
-          free(packet_ack);
-          close(sockfd);
-          close(fd);
-          return -1;
-        }
+      // Encodage du paquet a envoyer sur le reseau
+      err_code =  ack_encode(packet_ack, buffer_encode, len_buffer_encode);
+      if(err_code != PKT_OK){
+        free(packet_ack);
+        close(sockfd);
+        close(fd);
+        return -1;
+      }
 
-        // Envoi du ack sur le reseau
-        bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, (struct sockaddr *) &sender_addr, addr_len);
-        if(bytes_sent < 0){
-          perror("Erreur send ack");
-          close(sockfd);
-          close(fd);
-          return -1;
-        }
+      // Envoi du ack sur le reseau
+      bytes_sent = sendto(sockfd, (void *)buffer_encode, len_buffer_encode, 0, (struct sockaddr *) &sender_addr, addr_len);
+      if(bytes_sent < 0){
+        perror("Erreur send ack");
+        close(sockfd);
+        close(fd);
+        return -1;
+      }
 
-        free(buffer_encode);
+      free(buffer_encode);
 
-        break;
+      break;
 
-	}
+    }
 
     uint8_t seqnum_recv = pkt_get_seqnum(packet_recv);
 
@@ -209,16 +209,16 @@ int main(int argc, char *argv[]) {
     }
     else{
 
-    // Si le paquet recu est tronque
-    // On renvoie un paquet de type NACK au sender
-    if (pkt_get_tr(packet_recv) == 1){
+      // Si le paquet recu est tronque
+      // On renvoie un paquet de type NACK au sender
+      if (pkt_get_tr(packet_recv) == 1){
 
-		printf("Paquet tronqué !\n");
+        printf("Paquet tronqué !\n");
 
-		ack_t * packet_nack = ack_new();
-		packet_nack->type = PTYPE_NACK;
-		packet_nack->tr = 0;
-		packet_nack->window = window;
+        ack_t * packet_nack = ack_new();
+        packet_nack->type = PTYPE_NACK;
+        packet_nack->tr = 0;
+        packet_nack->window = window;
         packet_nack->seqnum = seqnum_recv;
         packet_nack->length = 0;
 
@@ -251,23 +251,23 @@ int main(int argc, char *argv[]) {
 
       else { // Si le paquet recu n'est pas tronque
 
-          // Ajout du buffer au buffer de reception
-          if(buffer_plein(buffer_recept) == 0){
-            ajout_buffer(packet_recv, buffer_recept, min_window);
-            window--;
-            err = write_buffer(fd, buffer_recept, &min_window, &max_window);
-            if (err == -1){
-              free(packet_ack);
-              close(sockfd);
-              close(fd);
-              return -1;
-            }
-           window = window - err;
+      // Ajout du buffer au buffer de reception
+      if(buffer_plein(buffer_recept) == 0){
+        ajout_buffer(packet_recv, buffer_recept, min_window);
+        window--;
+        err = write_buffer(fd, buffer_recept, &min_window, &max_window);
+        if (err == -1){
+          free(packet_ack);
+          close(sockfd);
+          close(fd);
+          return -1;
+        }
+        window = window - err;
 
-           packet_ack->seqnum = seqnum_recv+1;
+        packet_ack->seqnum = seqnum_recv+1;
 
 
-          packet_ack->window = window;
+        packet_ack->window = window;
 
 
         uint8_t * buffer_encode = (uint8_t *)malloc(16*sizeof(uint8_t));
@@ -320,17 +320,17 @@ int main(int argc, char *argv[]) {
 }
 }
 
-  pkt_del(packet_recv);
-  free(packet_ack);
+pkt_del(packet_recv);
+free(packet_ack);
 
-  free(buffer_recept);
+free(buffer_recept);
 
-  close(sockfd);
-  if(fd != 1){
-    close(fd);
-  }
+close(sockfd);
+if(fd != 1){
+  close(fd);
+}
 
-  printf("Fin de la transmission.\n");
-  return 0;
+printf("Fin de la transmission.\n");
+return 0;
 
 }
