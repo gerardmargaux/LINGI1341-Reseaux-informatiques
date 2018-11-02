@@ -13,12 +13,15 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <math.h>
+#include <inttypes.h>
 #include <ctype.h>
+#include <time.h>
 #include <zlib.h>
 
 // Definition de la structure d'un paquet
 struct __attribute__((__packed__)) pkt {
-	char * payload;
+  char * payload;
   // Ne pas oublier d'inverser le sens des bits
   uint8_t window:5; // Encode sur 5 bits
   uint8_t tr:1; // Encode sur 1 bit
@@ -30,14 +33,24 @@ struct __attribute__((__packed__)) pkt {
   uint32_t crc2; // Encode sur 32 bits (4 octets)
 };
 
+struct __attribute__((__packed__)) ack {
+  uint8_t window:5; // Encode sur 5 bits
+  uint8_t tr:1; // Encode sur 1 bit
+  uint8_t type:2; // Encode sur 2 bits
+  uint8_t seqnum; // Encode sur 8 bits
+  uint16_t length; // Encode sur 16 bits
+  uint32_t timestamp; // Encode sur 32 bits (4 octets)
+  uint32_t crc1; // Encode sur 32 bits (4 octets)
+};
+
 /*
  * pkt_new : Fonction qui crée un nouveau paquet de type PTYPE_DATA
  *
- * @return : un nouveau paquet de type PTYPE_DATA
+ * @return : un nouveau paquet de type PTYPE_DATA ou NULL en cas d'erreur
  */
 pkt_t* pkt_new()
 {
-	pkt_t * new = (pkt_t *) malloc(sizeof(pkt_t));
+  pkt_t * new = (pkt_t *) malloc(sizeof(pkt_t));
   if (new == NULL){
     fprintf(stderr, "Erreur du malloc");
     return NULL;
@@ -50,7 +63,7 @@ pkt_t* pkt_new()
   new->timestamp = 0;
   new->crc1 = 0;
   new->crc2 = 0;
-	new->payload = (char *)malloc(MAX_PAYLOAD_SIZE * sizeof(char));
+  new->payload = (char *)malloc(MAX_PAYLOAD_SIZE*sizeof(char));
   if (new->payload == NULL){
     fprintf(stderr, "Erreur du malloc");
     return NULL;
@@ -61,10 +74,10 @@ pkt_t* pkt_new()
 /*
  * pkt_ack_new : Fonction qui crée un nouveau paquet de type PTYPE_ACK
  *
- * @return : un nouveau paquet de type PTYPE_ACK
+ * @return : un nouveau paquet de type PTYPE_ACK ou NULL en cas d'erreur
  */
-pkt_t* pkt_ack_new(){
-	pkt_t * new = (pkt_t *) malloc(sizeof(pkt_t));
+ack_t* ack_new(){
+  ack_t * new = (ack_t *) malloc(sizeof(ack_t));
   if (new == NULL){
     fprintf(stderr, "Erreur du malloc");
     return NULL;
@@ -76,7 +89,7 @@ pkt_t* pkt_ack_new(){
   new->length = 0;
   new->timestamp = 0;
   new->crc1 = 0;
-	return new;
+  return new;
 }
 
 
@@ -89,9 +102,7 @@ pkt_t* pkt_ack_new(){
  */
 void pkt_del(pkt_t *pkt)
 {
-	if(pkt_get_type(pkt) == PTYPE_DATA){
-    	free(pkt->payload);
-		}
+    free(pkt->payload);
     free(pkt);
 }
 
@@ -183,7 +194,7 @@ uint32_t pkt_get_crc1(const pkt_t * pkt)
  * du paquet place en argument
  *
  * @pkt : pointeur vers un paquet
- * @return : la valeur du CRC2
+ * @return : la valeur du CRC2 ou 0 si il n'y a pas de CRC2
  */
 uint32_t pkt_get_crc2(const pkt_t * pkt)
 {
@@ -195,7 +206,7 @@ uint32_t pkt_get_crc2(const pkt_t * pkt)
  * du paquet place en argument
  *
  * @pkt : pointeur vers un paquet
- * @return : les données contenues dans le payload
+ * @return : un pointeur vers les données contenues dans le payload
  */
 const char* pkt_get_payload(const pkt_t * pkt)
 {
@@ -304,9 +315,13 @@ pkt_status_code pkt_set_length(pkt_t *pkt, const uint16_t length)
  * @return : Un code indiquant si l'operation a reussi ou representant
  * l'erreur rencontree
  */
-pkt_status_code pkt_set_timestamp(pkt_t *pkt, const uint32_t timestamp)
+pkt_status_code pkt_set_timestamp(pkt_t *pkt)
 {
-	pkt->timestamp = timestamp;
+	struct timeval * tv = (struct timeval *)malloc(sizeof(struct timeval)); 
+	gettimeofday (tv, NULL);
+	int temps_actuel = tv->tv_sec * 1000 + tv->tv_usec;
+	pkt->timestamp = temps_actuel;
+	free(tv);
   return PKT_OK;
 }
 
@@ -353,13 +368,15 @@ pkt_status_code pkt_set_crc2(pkt_t *pkt, const uint32_t crc2)
 pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t length)
 {
 	if (length > MAX_PAYLOAD_SIZE){
-    return E_LENGTH;
-  }
-  pkt->payload = realloc(pkt->payload, length);
+		return E_LENGTH;
+    }
+  
   memcpy(pkt->payload, data, length+1);
-	pkt->length = length;
+  
+  pkt->length = length;
   return PKT_OK;
 }
+
 
 /*
  * pkt_decode : Decode des donnees recues et cree une nouvelle structure pkt.
@@ -383,6 +400,155 @@ pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t len
 pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 
 	pkt_status_code err_code;
+
+  if (len < 12){ // Il n'y a pas de header car il est encode sur 12 bytes
+    return E_NOHEADER;
+  }
+	else if(len > 528){ // Le paquet est trop long
+		return E_UNCONSISTENT;
+	}
+
+	// Initialisation des variables
+	ptypes_t type;
+	uint8_t tr;
+	uint8_t window;
+	uint8_t seqnum;
+	uint16_t length;
+	uint32_t timestamp;
+	uint32_t crc1_recv;
+
+	// Premier byte : type, tr, window
+	uint8_t first_byte;
+	memcpy(&first_byte, data, 1);
+	
+	tr = first_byte>>5 & 0b00000001;
+	if(tr != 1 && tr != 0){
+		fprintf(stderr, "Erreur tr\n");
+		return E_TR;
+	}
+	
+	if(tr == 1){
+		first_byte = first_byte & 0b11011111;
+	}
+
+	type = first_byte>>6;
+	if(type != PTYPE_DATA && type != PTYPE_ACK && type != PTYPE_NACK){
+		fprintf(stderr, "Erreur type\n");
+		return E_TYPE;
+	}
+	
+	window = first_byte & 0b00011111;
+	if(window > 31 || window < 0){
+		fprintf(stderr, "Erreur window\n");
+		return E_WINDOW;
+	}
+
+	// Deuxième byte : seqnum
+	memcpy(&seqnum, data+1, 1);
+	if(seqnum < 0 || seqnum > 255){
+		fprintf(stderr, "Erreur seqnum\n");
+		return E_SEQNUM;
+	}
+
+	// 3e et 4e bytes : length
+	memcpy(&length, data+2, 2);
+	length = ntohs(length);
+	if(length < 0 || length > 512){
+		fprintf(stderr, "Erreur length\n");
+		return E_LENGTH;
+	}
+
+	// 5e -> 8e bytes : timestamp
+	memcpy(&timestamp, data+4, 4);
+	timestamp = ntohl(timestamp);
+	
+	
+	// 9e -> 12e bytes : CRC1
+	memcpy(&crc1_recv, data+8, 4);
+	crc1_recv = ntohl(crc1_recv);
+	// On vérifie si les deux CRC sont les mêmes
+	uint32_t crc1_check = crc32(0, (const Bytef *) data, 8);
+	if(crc1_recv != crc1_check){
+		fprintf(stderr, "Erreur CRC1\n");
+		return E_CRC;
+	}
+	err_code = pkt_set_crc1(pkt, crc1_recv);
+	if(err_code != PKT_OK){
+		return E_CRC;
+	}
+
+	// Encodage des valeurs dans la structure pkt
+
+	err_code = pkt_set_type(pkt, type);
+	if(err_code != PKT_OK){
+		return E_TYPE;
+	}
+
+	err_code = pkt_set_tr(pkt, tr);
+	if(err_code != PKT_OK){
+		return E_TR;
+	}
+
+	err_code = pkt_set_window(pkt, window);
+	if(err_code != PKT_OK){
+		return E_WINDOW;
+	}
+
+	err_code = pkt_set_seqnum(pkt, seqnum);
+	if(err_code != PKT_OK){
+		return E_SEQNUM;
+	}
+
+	err_code = pkt_set_length(pkt, length);
+	if(err_code != PKT_OK){
+		return E_LENGTH;
+	}
+	err_code = pkt_set_timestamp(pkt);
+
+	if(type == PTYPE_DATA && tr == 0){
+
+		uint32_t crc2_recv;
+		char * payload = (char *) malloc(512*sizeof(char));
+		if(payload == NULL){
+			fprintf(stderr, "Erreur payload\n");
+			return E_NOMEM;
+		}
+
+		
+		// Payload
+		strcpy(payload, (const char*) data+12);
+		*(payload+length) = '\0';
+
+		// CRC2
+		memcpy(&crc2_recv, data+12+length, 4);
+		crc2_recv = ntohl(crc2_recv);
+
+		// On vérifie si les deux CRC sont les mêmes
+		uint32_t crc2_check = crc32(0, (const Bytef *) data+12, length);
+		if(crc2_recv != crc2_check){
+			fprintf(stderr, "Erreur CRC2\n");
+			free(payload);
+			return E_CRC;
+		}
+
+		err_code = pkt_set_payload(pkt, payload, length);
+		if(err_code != PKT_OK){
+			free(payload);
+			return E_LENGTH;
+		}
+
+		err_code = pkt_set_crc2(pkt, crc2_recv);
+		free(payload);
+
+	}
+
+
+	return PKT_OK;
+
+}
+
+
+pkt_status_code ack_decode(uint8_t *data, const size_t len, ack_t *ack){
 
   if (len < 12){ // Il n'y a pas de header car il est encode sur 12 bytes
     return E_NOHEADER;
@@ -451,73 +617,24 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 
 	// Encodage des valeurs dans la structure pkt
 
-	err_code = pkt_set_type(pkt, type);
-	if(err_code != PKT_OK){
-		return E_TYPE;
-	}
+	ack->type = type;
 
-	err_code = pkt_set_tr(pkt, tr);
-	if(err_code != PKT_OK){
-		return E_TR;
-	}
+	ack->tr = tr;
 
-	err_code = pkt_set_window(pkt, window);
-	if(err_code != PKT_OK){
-		return E_WINDOW;
-	}
+	ack->window = window;
+	
+	ack->seqnum = seqnum;
 
-	err_code = pkt_set_seqnum(pkt, seqnum);
-	if(err_code != PKT_OK){
-		return E_SEQNUM;
-	}
+	ack->length = length;
 
-	err_code = pkt_set_length(pkt, length);
-	if(err_code != PKT_OK){
-		return E_LENGTH;
-	}
+	ack->timestamp = timestamp;
 
-	err_code = pkt_set_timestamp(pkt, timestamp);
-
-	err_code = pkt_set_crc1(pkt, crc1_recv);
-
-	if(type == PTYPE_DATA){
-
-		uint32_t crc2_recv;
-		char * payload = (char *) malloc(512*sizeof(char));
-		if(payload == NULL){
-			fprintf(stderr, "Erreur payload\n");
-			return E_NOMEM;
-		}
-
-		// Payload
-		memcpy(payload, data+12, length);
-
-		// CRC2
-		memcpy(&crc2_recv, data+12+length, 4);
-		crc2_recv = ntohl(crc2_recv);
-
-		// On vérifie si les deux CRC sont les mêmes
-		uint32_t crc2_check = crc32(0, (const Bytef *) data+12, length);
-		if(crc2_recv != crc2_check){
-			fprintf(stderr, "Erreur CRC2\n");
-			free(payload);
-			return E_CRC;
-		}
-
-		err_code = pkt_set_payload(pkt, payload, length);
-		if(err_code != PKT_OK){
-			free(payload);
-			return E_LENGTH;
-		}
-
-		err_code = pkt_set_crc2(pkt, crc2_recv);
-
-	}
-
+	ack->crc1 = crc1_recv;
 
 	return PKT_OK;
 
 }
+
 
 /*
  * pkt_encode : Encode une struct pkt dans un buffer, pret a etre envoye sur le reseau
@@ -564,7 +681,7 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
 
 
 	// Teste si le buffer est trop petit
-	if(len < length+16){
+	if(len < 528){
 		fprintf(stderr, "Erreur nomem\n");
 		return E_NOMEM;
 	}
@@ -594,19 +711,85 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len)
 	memcpy(buf+8, &crc1, 4);
 
 
-	printf("Type : %u\n", type);
 	// Si le paquet n'est pas tronqué
 	if(tr == 0 && type == PTYPE_DATA){
 
 		const char* payload = pkt_get_payload(pkt); // up to 512 bytes
-		printf("Payload avant encodage : %s\n", payload);
 
-  	memcpy(buf+12, payload, ntohs(length)); // 12e -> 524e byte : payload
+		memcpy(buf+12, payload, ntohs(length)); // 12e -> 524e byte : payload
+		
 
 		uint32_t crc2 = htonl(crc32(0, (const Bytef *) buf+12, ntohs(length))); // Calcul du crc2
 		printf("Calcul de CRC2 : %u\n", ntohl(crc2));
 	 	memcpy(buf+12+ntohs(length), &crc2, 4);
 	}
+
+	return PKT_OK;
+}
+
+
+pkt_status_code ack_encode(const ack_t* ack, uint8_t *buf, size_t len)
+ {
+
+  // Gerer le header
+  uint8_t window = ack->window;
+	if(window > 31 || window < 0){
+		fprintf(stderr, "Erreur window\n");
+		return E_WINDOW;
+	}
+  uint8_t type = ack->type;
+	if(type != PTYPE_DATA && type != PTYPE_ACK && type != PTYPE_NACK){
+		fprintf(stderr, "Erreur type\n");
+		return E_TYPE;
+	}
+  uint8_t tr = ack->tr;
+	if(tr != 0 && tr != 1){
+		fprintf(stderr, "Erreur tr\n");
+		return E_TR;
+	}
+  uint8_t seqnum = ack->seqnum;
+	if(seqnum < 0 || seqnum > 255){
+		fprintf(stderr, "Erreur seqnum\n");
+		return E_SEQNUM;
+	}
+  uint16_t length = ack->length; // 2 bytes
+	if(length < 0 || length > 512){
+		fprintf(stderr, "Erreur length\n");
+		return E_LENGTH;
+	}
+	uint32_t timestamp = htonl(ack->timestamp); // 4 bytes
+
+
+	// Teste si le buffer est trop petit
+	if(len < 12){
+		fprintf(stderr, "Erreur nomem\n");
+		return E_NOMEM;
+	}
+
+	length = htons(length);
+
+	// Premier byte
+  uint8_t type_format = type<<6 & 0b00000011000000;
+	uint8_t tr_format = tr<<5 & 0b00000100000;
+	uint8_t window_format = window & 0b00011111;
+	uint8_t first_byte = type_format | tr_format | window_format;
+  memcpy(buf, &first_byte, 1);
+
+	// Deuxième byte
+	memcpy(buf+1, &seqnum, 1); // seqnum
+
+	// Troisième et quatrième bytes
+  memcpy(buf+2, &length, 2); // length
+
+	// Quatrième au huitième byte
+	memcpy(buf+4, &timestamp, 4); // timestamp
+
+  // Gerer les CRC
+  uint32_t crc1 = htonl(crc32(0, (const Bytef *) buf, 8));
+	printf("Calcul de CRC1 : %u\n", ntohl(crc1));
+  // Huitième au douzième byte : crc1
+	memcpy(buf+8, &crc1, 4);
+
 
 	return PKT_OK;
 }
@@ -878,14 +1061,19 @@ void decale_window(uint8_t *min_window, uint8_t *max_window){
  * @return : 0 si le paquet a bien été ajouté au buffer
  *           1 si le paquet n'a pas été ajouté au buffer
  */
-void ajout_buffer (pkt_t* pkt, pkt_t** buffer_recept, uint8_t min_window){
-	if(min_window <= pkt_get_seqnum(pkt)){
-		*(buffer_recept + pkt_get_seqnum(pkt) - min_window) = pkt;
-	}
-	else{
-		*(buffer_recept + (255-min_window+1+pkt_get_seqnum(pkt))) = pkt;
-	}
-}
+ void ajout_buffer (pkt_t* pkt, pkt_t** buffer_recept, uint8_t min_window){
+ 	int i;
+ 	if(min_window <= pkt_get_seqnum(pkt)){
+ 		i = pkt_get_seqnum(pkt) - min_window;
+ 		printf("Place à laquelle le paquet est mis dans le buffer : %d\n", i);
+ 		*(buffer_recept + i) = pkt;
+ 	}
+ 	else{
+ 		i = (255-min_window+1+pkt_get_seqnum(pkt));
+ 		printf("Place à laquelle le paquet est mis dans le buffer : %d\n", i);
+ 		*(buffer_recept + i) = pkt;
+ 	}
+ }
 
 /*
  * get_from_buffer : Retrouve le paquet qui correspond à un numero de sequence
@@ -898,7 +1086,8 @@ void ajout_buffer (pkt_t* pkt, pkt_t** buffer_recept, uint8_t min_window){
  *           - NULL en cas d'erreur
  */
 pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum){
-	for(int i = 0; i < MAX_WINDOW_SIZE; i++){
+	int i;
+	for(i = 0; i < MAX_WINDOW_SIZE; i++){
 		if(*(buffer+i) != NULL){
 			if(seqnum == pkt_get_seqnum(*(buffer+i))){
 				return *(buffer+i);
@@ -918,9 +1107,11 @@ pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum){
  * 					 - 1 si l'element n'a pas ete retire correctement
  */
  int retire_buffer(pkt_t ** buffer, uint8_t seqnum){
-	 for(int i = 0; i < MAX_WINDOW_SIZE; i++){
+	 int i;
+	 for(i = 0; i < MAX_WINDOW_SIZE; i++){
  		if(*(buffer+i) != NULL){
  			if(seqnum == pkt_get_seqnum(*(buffer+i))){
+				//pkt_del(*(buffer+i));
 				*(buffer+i) = NULL;
 				return 0;
  			}
@@ -939,7 +1130,8 @@ pkt_t* get_from_buffer(pkt_t ** buffer, uint8_t seqnum){
 	*  					- 0 si il reste au moins une place dans le buffer
   */
  int buffer_plein(pkt_t ** buffer){
-	 for(int i = 0; i < LENGTH_BUF_REC; i++){
+	 int i;
+	 for(i = 0; i < LENGTH_BUF_REC; i++){
 		 if (buffer[i] == NULL){
 			 return 0;
 		 }
@@ -966,6 +1158,7 @@ int write_buffer(int fd, pkt_t **buffer, uint8_t *min_window, uint8_t *max_windo
 	 }
 	 else{
 		 if(fd == STDOUT){
+			 printf("Données reçues :\n");
 			 printf("%s\n", pkt_get_payload(buffer[i]));
 			 buffer[i] = NULL;
 			 decale_window(min_window, max_window);

@@ -21,6 +21,8 @@
 /* Raccourci pour struct pkt */
 typedef struct pkt pkt_t;
 
+typedef struct ack ack_t;
+
 /* Types de paquets */
 typedef enum {
 	PTYPE_DATA = 1,
@@ -70,7 +72,7 @@ pkt_t* pkt_new();
  *
  * @return : un nouveau paquet de type PTYPE_ACK ou NULL en cas d'erreur
  */
-pkt_t* pkt_ack_new();
+ack_t* ack_new();
 
 /*
  * pkt_del : Libere le pointeur vers la struct pkt, ainsi que toutes les
@@ -225,7 +227,7 @@ pkt_status_code pkt_set_length   (pkt_t* pkt, const uint16_t length);
  * @return : Un code indiquant si l'operation a reussi ou representant
  * l'erreur rencontree
  */
-pkt_status_code pkt_set_timestamp(pkt_t* pkt, const uint32_t timestamp);
+pkt_status_code pkt_set_timestamp(pkt_t* pkt);
 
 /*
  * pkt_set_crc1 : Fonction qui va initialiser la valeur du CRC1 du
@@ -270,11 +272,23 @@ pkt_status_code pkt_set_payload(pkt_t* pkt, const char *data, const uint16_t len
  * @pkt: La structure a encoder
  * @buf: Le buffer dans lequel la structure sera encodee
  * @len: La taille disponible dans le buffer
- * @len-POST: Le nombre de d'octets ecrit dans le buffer
  * @return: Un code indiquant si l'operation a reussi ou E_NOMEM si
  * le buffer est trop petit.
  */
 pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len);
+
+
+/*
+ * pkt_encode : Encode une struct ack dans un buffer, pret a etre envoye sur le reseau
+ * (c-a-d en network byte-order), incluant le CRC32 du header et
+ *
+ * @ack: La structure a encoder
+ * @buf: Le buffer dans lequel la structure sera encodee
+ * @len: La taille disponible dans le buffer
+ * @return: Un code indiquant si l'operation a reussi ou E_NOMEM si
+ * le buffer est trop petit.
+ */
+pkt_status_code ack_encode(const ack_t* ack, uint8_t *buf, size_t len);
 
 /*
  * pkt_decode : Decode des donnees recues et cree une nouvelle structure pkt.
@@ -296,6 +310,26 @@ pkt_status_code pkt_encode(const pkt_t* pkt, uint8_t *buf, size_t len);
  * l'erreur rencontree
  */
 pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt);
+
+
+/*
+ * ack_decode : Decode des donnees recues et cree une nouvelle structure ack.
+ * Le paquet recu est en network byte-order.
+ * La fonction verifie que:
+ * - Le CRC32 du header recu est le même que celui decode a la fin
+ *   du header (en considerant le champ TR a 0)
+ * - Le type du paquet est valide
+ * - La longueur du paquet et le champ TR sont valides et coherents
+ *   avec le nombre d'octets recus.
+ *
+ * @data: L'ensemble d'octets constituant le paquet recu
+ * @len: Le nombre de bytes recus
+ * @pkt: Une struct ack valide
+ * @post: ack est la representation du paquet recu
+ * @return: Un code indiquant si l'operation a reussi ou representant
+ * l'erreur rencontree
+ */
+pkt_status_code ack_decode(uint8_t *data, const size_t len, ack_t *ack);
 
 /*
  * real_address : Trouve le nom de la ressource correspondant à une adresse IPv6

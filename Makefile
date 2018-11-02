@@ -1,16 +1,16 @@
 main: clean lib sender receiver linksim
 
-sender: local_sender.o
-	@gcc -Wall -g -o $@ src/local_sender.o src/lib.a -lz
+sender: sender.o
+	@gcc -Wall -g -o $@ src/sender.o src/lib.a -lz
 
-local_sender.o:
-	@gcc -Wall -o src/local_sender.o -c src/local_sender.c -I src
+sender.o:
+	@gcc -Wall -o src/sender.o -c src/sender.c -I src
 
-receiver: local_receiver.o
-	@gcc -Wall -g -o $@ src/local_receiver.o src/lib.a -lz
+receiver: receiver.o
+	@gcc -Wall -g -o $@ src/receiver.o src/lib.a -lz
 
-local_receiver.o:
-	@gcc -Wall -o src/local_receiver.o -c src/local_receiver.c -I src
+receiver.o:
+	@gcc -Wall -o src/receiver.o -c src/receiver.c -I src
 
 lib: lib.o
 	@ar r src/lib.a src/lib.o

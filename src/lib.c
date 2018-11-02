@@ -420,17 +420,23 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 	// Premier byte : type, tr, window
 	uint8_t first_byte;
 	memcpy(&first_byte, data, 1);
+	
+	tr = first_byte>>5 & 0b00000001;
+	if(tr != 1 && tr != 0){
+		fprintf(stderr, "Erreur tr\n");
+		return E_TR;
+	}
+	
+	if(tr == 1){
+		first_byte = first_byte & 0b11011111;
+	}
 
 	type = first_byte>>6;
 	if(type != PTYPE_DATA && type != PTYPE_ACK && type != PTYPE_NACK){
 		fprintf(stderr, "Erreur type\n");
 		return E_TYPE;
 	}
-	tr = first_byte>>5 & 0b00000001;
-	if(tr != 1 && tr != 0){
-		fprintf(stderr, "Erreur tr\n");
-		return E_TR;
-	}
+	
 	window = first_byte & 0b00011111;
 	if(window > 31 || window < 0){
 		fprintf(stderr, "Erreur window\n");
@@ -456,26 +462,19 @@ pkt_status_code pkt_decode(uint8_t *data, const size_t len, pkt_t *pkt){
 	memcpy(&timestamp, data+4, 4);
 	timestamp = ntohl(timestamp);
 	
-	if (tr == 1){ // Si le paquet est tronque 
-		err_code = pkt_set_crc1(pkt, 0);
-		if(err_code != PKT_OK){
-			return E_CRC;
-		}
+	
+	// 9e -> 12e bytes : CRC1
+	memcpy(&crc1_recv, data+8, 4);
+	crc1_recv = ntohl(crc1_recv);
+	// On vérifie si les deux CRC sont les mêmes
+	uint32_t crc1_check = crc32(0, (const Bytef *) data, 8);
+	if(crc1_recv != crc1_check){
+		fprintf(stderr, "Erreur CRC1\n");
+		return E_CRC;
 	}
-	else { // Le paquet n'est pas tronqué
-		// 9e -> 12e bytes : CRC1
-		memcpy(&crc1_recv, data+8, 4);
-		crc1_recv = ntohl(crc1_recv);
-		// On vérifie si les deux CRC sont les mêmes
-		uint32_t crc1_check = crc32(0, (const Bytef *) data, 8);
-		if(crc1_recv != crc1_check){
-			fprintf(stderr, "Erreur CRC1\n");
-			return E_CRC;
-		}
-		err_code = pkt_set_crc1(pkt, crc1_recv);
-		if(err_code != PKT_OK){
-			return E_CRC;
-		}
+	err_code = pkt_set_crc1(pkt, crc1_recv);
+	if(err_code != PKT_OK){
+		return E_CRC;
 	}
 
 	// Encodage des valeurs dans la structure pkt
