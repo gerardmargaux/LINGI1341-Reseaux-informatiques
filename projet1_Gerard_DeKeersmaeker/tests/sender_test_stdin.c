@@ -67,12 +67,6 @@ int main(int argc, char *argv[]) {
 
   int err; // Variable pour error check
 
-  // Vérification du nombre d'arguments
-  err = arg_check(argc, 3, 5);
-  if(err == -1){
-    return -1;
-  }
-
   int fd = STDIN; // File descriptor avec lequel on va lire les données
   int bytes_read; // Nombre de bytes lus sur l'entrée standard / le fichier source
   int bytes_sent; // Nombre de bytes envoyés au receiver
@@ -86,31 +80,11 @@ int main(int argc, char *argv[]) {
   uint8_t seqnum = 0;
 
 
-  // Prise en compte des arguments en ligne de commande
-  int a = 1;
-  char* hostname;
-  int host_set = 0;
-  char* port;
-  for(; a < argc; a++){
-    if(strcmp(argv[a], "-f") == 0){
-      a++;
-      printf("Lecture dans le fichier %s\n", argv[a]);
-      fd = open(argv[a], O_RDONLY);
-      if(fd == -1){
-        perror("Erreur open fichier source");
-        return -1;
-      }
-    }
-    else if(host_set == 0){
-      hostname = argv[a];
-      printf("Hostname : %s\n", hostname);
-      host_set = 1;
-    }
-    else{
-      port = argv[a];
-      printf("Port : %s\n", port);
-    }
-  }
+  char* hostname = "::1";
+  printf("Hostname : %s\n", hostname);
+  char* port = "12345";
+  printf("Port : %s\n", port);
+  printf("Lecture sur l'entrée standard\n");
 
   // Création du socket
   int sockfd; // Variable qui va contenir le file descriptor du socket
@@ -139,7 +113,7 @@ int main(int argc, char *argv[]) {
 	  fprintf(stderr, "Erreur de création du paquet \n");
 	  return -1;
   }
-
+  
   ack_t* ack_received = ack_new();
   if(ack_received == NULL){
 	  fprintf(stderr, "Erreur de création du paquet d'acquittement \n");
@@ -181,28 +155,28 @@ int main(int argc, char *argv[]) {
       free(ack_buffer);
       return -1;
     }
-
+    
     // Déconnexion
     else if(bytes_read == 0){
-
+		
 		printf("Déconnexion...\n");
-
+		
 		//bytes_sent = sendto(sockfd, "", 1, 0, servinfo->ai_addr, servinfo->ai_addrlen);
-
+		
 		uint8_t seqnum_end = seqnum + 1;
-
+		
 		err_code = pkt_set_seqnum(packet, seqnum);
 		if(err_code != PKT_OK){
       		fprintf(stderr, "Erreur set_seqnum\n");
       		return -1;
       	}
-
+		
 		err_code = pkt_set_length(packet, 0);
 		if(err_code != PKT_OK){
       		fprintf(stderr, "Erreur set_length\n");
       		return -1;
       	}
-
+		
 		uint8_t * buffer_encode = (uint8_t *)malloc(528);
         if (buffer_encode == NULL){
           fprintf(stderr, "Erreur malloc : buffer_encode\n");
@@ -217,31 +191,31 @@ int main(int argc, char *argv[]) {
       		fprintf(stderr, "Erreur encode\n");
       		return -1;
       	}
-
-
+      	
+		
 		bytes_sent = sendto(sockfd, (void*) buffer_encode, 528, 0, servinfo->ai_addr, servinfo->ai_addrlen);
-
+		
 		struct sockaddr_in6 receiver_addr;
         memset(&receiver_addr, 0, sizeof(receiver_addr));
         socklen_t addr_len = sizeof(struct sockaddr);
-
-
+        
+        
         FD_ZERO(&readfds);
         FD_SET(sockfd, &readfds);
 
         tv.tv_sec = 4;
         tv.tv_usec = 500000;
-
+	
         sret = select(sockfd+1, &readfds, NULL, NULL, &tv);
         while(1){
-
-		//struct timeval * rto = (struct timeval *)malloc(sizeof(struct timeval));
-
+		
+		//struct timeval * rto = (struct timeval *)malloc(sizeof(struct timeval)); 
+		
         while(sret == 0){
 		  //gettimeofday (rto, NULL);
 		  //int temps_actuel = rto->tv_sec * 1000 + rto->tv_usec;
 		  //if (pkt_get_timestamp(packet) + tv.tv_sec * 1000 + tv.tv_usec < temps_actuel) {
-
+		
           printf("Renvoi du paquet avec de déconnexion\n");
           bytes_sent = sendto(sockfd, (void *) buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
           if(bytes_sent == -1){
@@ -252,7 +226,7 @@ int main(int argc, char *argv[]) {
             close(fd);
             return -1;
           }
-
+          
 
           FD_ZERO(&readfds);
           FD_SET(sockfd, &readfds);
@@ -263,7 +237,7 @@ int main(int argc, char *argv[]) {
           sret = select(sockfd+1, &readfds, NULL, NULL, &tv);
         }
         //free(rto);
-
+        
           bytes_received = recvfrom(sockfd, ack_buffer, 528, 0, (struct sockaddr *) &receiver_addr, &addr_len);
           if(bytes_received < 0){
             perror("Erreur receive ACK");
@@ -271,7 +245,7 @@ int main(int argc, char *argv[]) {
             close(fd);
             return -1;
           }
-
+         
 
         err_code = ack_decode(ack_buffer, 12, ack_received);
         if(err_code != PKT_OK){
@@ -281,26 +255,26 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
-
+        
         printf("Seqnum de déconnexion : %u\n", seqnum_end);
         printf("Seqnum du paquet de déconnexion : %u\n", ack_received->seqnum);
         if(ack_received->seqnum == seqnum_end){
 			printf("Reçu ACK de déconnexion.\n");
 			break;
 		}
-
+		
 		}
-
-
+		
+		
 		free(ack_buffer);
 		free(payload_buf);
 		free(buffer_encode);
-
+		
 		break;
-
-
+		
+	
 	}
-
+	
 	// Lecture de données
     else{
 
@@ -315,11 +289,11 @@ int main(int argc, char *argv[]) {
       }
       if(*payload_buf != '\0'){ // Si on a effectivement écrit quelque chose
         err_code = pkt_set_payload(packet, payload_buf, strlen(payload_buf));
-        if (err_code != PKT_OK){
+        if (err_code == -1){
 			fprintf(stderr, "Erreur set payload dans la boucle \n");
 			return -1;
 		}
-
+		
 		strcpy(payload_buf, "");
 
         err_code = pkt_set_seqnum(packet, seqnum);
@@ -329,13 +303,13 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
-
+        
 		err_code = pkt_set_timestamp(packet);
       	if(err_code != PKT_OK){
       		fprintf(stderr, "Erreur set_timestamp\n");
       		return -1;
       	}
-
+      	
 
         err = seqnum_inc(&seqnum);
         if(err == -1){
@@ -353,7 +327,7 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
-
+		
         // Ajout du paquet au buffer d'envoi
       	ajout_buffer(packet, buffer_envoi, min_window);
         uint8_t * buffer_encode = (uint8_t *)malloc(528);
@@ -370,7 +344,7 @@ int main(int argc, char *argv[]) {
       		fprintf(stderr, "Erreur encode\n");
       		return -1;
       	}
-
+		
 
 		// Envoi du paquet sur le réseau
       	bytes_sent = sendto(sockfd, (void *) buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
@@ -389,17 +363,17 @@ int main(int argc, char *argv[]) {
 
         tv.tv_sec = 4;
         tv.tv_usec = 500000;
-
+	
         sret = select(sockfd+1, &readfds, NULL, NULL, &tv);
         while(1){
-
-		//struct timeval * rto = (struct timeval *)malloc(sizeof(struct timeval));
-
+		
+		//struct timeval * rto = (struct timeval *)malloc(sizeof(struct timeval)); 
+		
         while(sret == 0){
 		  //gettimeofday (rto, NULL);
 		  //int temps_actuel = rto->tv_sec * 1000 + rto->tv_usec;
 		  //if (pkt_get_timestamp(packet) + tv.tv_sec * 1000 + tv.tv_usec < temps_actuel) {
-
+		
           printf("Renvoi du paquet avec numéro de séquence %u\n", pkt_get_seqnum(packet));
           bytes_sent = sendto(sockfd, (void *) buffer_encode, len_buffer_encode, 0, servinfo->ai_addr, servinfo->ai_addrlen);
           if(bytes_sent == -1){
@@ -410,7 +384,7 @@ int main(int argc, char *argv[]) {
             close(fd);
             return -1;
           }
-
+          
 
           FD_ZERO(&readfds);
           FD_SET(sockfd, &readfds);
@@ -421,7 +395,7 @@ int main(int argc, char *argv[]) {
           sret = select(sockfd+1, &readfds, NULL, NULL, &tv);
         }
         //free(rto);
-
+        
           bytes_received = recvfrom(sockfd, ack_buffer, 528, 0, (struct sockaddr *) &receiver_addr, &addr_len);
           if(bytes_received < 0){
             perror("Erreur receive ACK");
@@ -429,7 +403,7 @@ int main(int argc, char *argv[]) {
             close(fd);
             return -1;
           }
-
+         
 
         err_code = ack_decode(ack_buffer, 12, ack_received);
         if(err_code != PKT_OK){
@@ -439,9 +413,9 @@ int main(int argc, char *argv[]) {
           close(fd);
           return -1;
         }
-
+        
         if(ack_received->type == PTYPE_ACK){
-
+		
         // On retire les paquets du buffer d'envoi
         uint8_t seqnum_ack_received = ack_received->seqnum;
           int i;
@@ -467,23 +441,23 @@ int main(int argc, char *argv[]) {
           fprintf(stderr, "Erreur malloc : buffer_encode\n");
           return -1;
         }
-
-
+        
+        
         err_code = pkt_encode(packet_renvoi, buffer_encode2, 528);
         if(err_code != PKT_OK){
       		fprintf(stderr, "Erreur encode\n");
       		return -1;
       	}
-
-
+      	
+      	
       	bytes_sent = sendto(sockfd, (void *) buffer_encode2, 528, 0, servinfo->ai_addr, servinfo->ai_addrlen);
       	if(bytes_sent == -1){
       		perror("Erreur sendto packet");
       		return -1;
       	}
-
+      	
       	sret = select(sockfd+1, &readfds, NULL, NULL, &tv);
-
+      	
       	while(sret == 0){
           printf("Renvoi du paquet avec numéro de séquence %u\n", pkt_get_seqnum(packet_renvoi));
           bytes_sent = sendto(sockfd, (void *) buffer_encode2, 528, 0, servinfo->ai_addr, servinfo->ai_addrlen);
@@ -495,7 +469,7 @@ int main(int argc, char *argv[]) {
             close(fd);
             return -1;
           }
-
+          
 
           FD_ZERO(&readfds);
           FD_SET(sockfd, &readfds);
@@ -505,7 +479,7 @@ int main(int argc, char *argv[]) {
 
           sret = select(sockfd+1, &readfds, NULL, NULL, &tv);
         }
-
+      	
         free(buffer_encode2);
       }
 
@@ -514,7 +488,7 @@ int main(int argc, char *argv[]) {
         memset(ack_received, 0, 12);
         packet->crc1 = 0;
         packet->crc2 = 0;
-        packet->window = 0;
+        packet->window = 0; 
 		packet->tr = 0;
 		packet->length = 1;
 		strcpy(packet->payload, "");
@@ -523,18 +497,18 @@ int main(int argc, char *argv[]) {
       }
 	}
   }
-
+	
   free(ack_received);
   free(buffer_envoi);
   pkt_del(packet);
-
+ 
 
   freeaddrinfo(servinfo);
   close(sockfd);
   if(fd != 0){
     close(fd);
   }
-
+  
   printf("Fin de la transmission.\n");
   return 0;
 }
